@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.awt.*;
+import java.awt.event.KeyEvent;
 
 public class MafiaGameClient {
 	private static Socket socket;
@@ -14,6 +16,7 @@ public class MafiaGameClient {
 		}
 		
 		Scanner scanner = new Scanner(System.in);
+		boolean chattingOn = true;
 		
 		////////////// 서버 접속 //////////////////
 		try {
@@ -41,17 +44,49 @@ public class MafiaGameClient {
 		printWriter.flush();
 		////////////////////////////////////////
 		
-		////////// 게임시작 대기, 채팅 ///////////////
+		//////////// 채팅을 위한 송신 쓰레드 개설 /////////////
+		Thread sendMessage = new Thread(new Runnable() {
+
+			@Override
+			public void run() {				
+				while(true) {
+					String input = "";
+					input = scanner.nextLine();
+					if(input.equals(""))
+						break;
+					
+					printWriter.println(input);
+					printWriter.flush();
+				}
+				System.out.println("debug : Chatting OFF");
+			}
+		});		
+		sendMessage.start();
+		//////////////////////////////////////////////
+		
+		////////// 게임시작 대기, 채팅(메인쓰레드 : 수신) ///////////////
 		while (true) {
 			if (bufferedReader != null) {
 				try {
 					String line = bufferedReader.readLine();
+					if(line.equals(MafiaGameServer.CHATTING_END)) {
+						System.out.println("채팅이 종료되었습니다. 게임 시작을 위해 Enter를 눌러주세요.");
+						// 송신 쓰레드에서 scanner.nextLine()으로 대기중인 쓰레드를 강제로 종료시킬 방법이 없음.
+						// BufferedReader에 System.in을 연결해보고 이것저것 시도해봤지만 도저히 없음.
+						// 따라서 엔터를 누르게 유도함으로써 송신쓰레드를 종료하게 만듦.
+						break;
+					}
 					System.out.println(line);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 			}
 		}
-		////////////////////////////////////////
+		///////////////////////////////////////////////////////
+		
+		//////////////// 게임 시작 ///////////////////////////////
+		while(true) {
+			
+		}
 	}
 }

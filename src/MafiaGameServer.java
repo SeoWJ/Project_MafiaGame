@@ -22,9 +22,12 @@ public class MafiaGameServer {
 	public static final int POLICE = 2;
 	public static final int MEDIC = 3;
 	
+	public static final int MAX_PLAYER = 7;
+	public static final String CHATTING_END = "*SYSTEM*.ChatOff";
+	
 	public static final int SERVER_PORT = 8080;
 	
-	private static Vector<Player> playerList = new Vector<Player>();
+	private static List<Player> playerList = new ArrayList<Player>();
 	
 	public static void main(String[] args) {
 		ServerSocket serverSocket = null;
@@ -41,7 +44,8 @@ public class MafiaGameServer {
 		
 		
 		////////// 플레이어 참여 대기(7명) /////////////////////////////////
-		while(playerList.size() < 7) {
+		//while(playerList.size() < MAX_PLAYER) {
+		while(playerList.size() < 3) {
 			Socket socket = null;
 			
 			try {
@@ -64,70 +68,92 @@ public class MafiaGameServer {
 			player.setUserNickName(userNickName);
 			System.out.println("debug : 닉네임 획득 성공");
 			playerList.add(player);
+			player.start();
 			
 			for(int i=0; i<playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
 				
 				if(playerList.get(i).getSocket().equals(socket)) {
-					printWriter.println("\n");
-					printWriter.flush();
-					
-					printWriter.println("***** 게임에 참여하였습니다. *****");
-					printWriter.flush();
-					
-					printWriter.println("\n");
-					printWriter.flush();
-					
-					printWriter.println("현재 참여 인원은 " + playerList.size() + " / 7 명 입니다.");
-					printWriter.flush();
-					
-					printWriter.println("\n");
-					printWriter.flush();
-					
-					printWriter.println("**********************************");
-					printWriter.flush();
-					
-					printWriter.println("\n");
-					printWriter.flush();
-					
-					printWriter.println("게임이 시작할때까지 다른 플레이어와 채팅할 수 있습니다.");
-					printWriter.flush();
-					
-					printWriter.println("\n");
-					printWriter.flush();
-					
+					lobbyEnter(printWriter);					
 					System.out.println("debug : 접속자 안내 메세지 출력");
 				}
 				else {
-					printWriter.println("Player \"" + player.getUserNickName() + "\" 님이 게임에 참여하였습니다.");
-					printWriter.flush();
-					
-					printWriter.println("\n");
-					printWriter.flush();
-					
-					printWriter.println("**********************************");
-					printWriter.flush();
-					
-					printWriter.println("\n");
-					printWriter.flush();
-					
-					printWriter.println("현재 참여 인원은 " + playerList.size() + " / 7 명 입니다.");
-					printWriter.flush();
-					
-					printWriter.println("\n");
-					printWriter.flush();
-					
-					printWriter.println("**********************************");
-					printWriter.flush();
-					
-					printWriter.println("\n");
-					printWriter.flush();
-					
+					lobbyBroadCast(printWriter, player);					
 					System.out.println("debug : 브로드캐스트 출력");
 				}
 			}		// 참가자들에게 브로드캐스트.
 		}
 		//////////////////////////////////////////////////////////////
+		
+		for(int i=0; i<playerList.size(); i++) {
+			PrintWriter printWriter = playerList.get(i).getPrintWriter();
+			printWriter.flush();
+			
+			printWriter.println(CHATTING_END);
+			printWriter.flush();
+		}
+	}
+	
+	public static void lobbyEnter(PrintWriter printWriter) {
+		printWriter.println("\n");
+		printWriter.flush();
+		
+		printWriter.println("***** 게임에 참여하였습니다. *****");
+		printWriter.flush();
+		
+		printWriter.println("\n");
+		printWriter.flush();
+		
+		printWriter.println("현재 참여 인원은 " + playerList.size() + " / " + MAX_PLAYER + " 명 입니다.");
+		printWriter.flush();
+		
+		printWriter.println("\n");
+		printWriter.flush();
+		
+		printWriter.println("**********************************");
+		printWriter.flush();
+		
+		printWriter.println("\n");
+		printWriter.flush();
+		
+		printWriter.println("게임이 시작할때까지 다른 플레이어와 채팅할 수 있습니다.");
+		printWriter.flush();
+		
+		printWriter.println("\n");
+		printWriter.flush();
+	}
+	
+	public static void lobbyBroadCast(PrintWriter printWriter, Player player) {		
+		printWriter.println("\n");
+		printWriter.flush();
+		
+		printWriter.println("**********************************");
+		printWriter.flush();
+		
+		printWriter.println("\n");
+		printWriter.flush();
+		
+		printWriter.println("Player \"" + player.getUserNickName() + "\" 님이 게임에 참여하였습니다.");
+		printWriter.flush();
+		
+		printWriter.println("\n");
+		printWriter.flush();
+		
+		printWriter.println("현재 참여 인원은 " + playerList.size() + " / " + MAX_PLAYER + " 명 입니다.");
+		printWriter.flush();
+		
+		printWriter.println("\n");
+		printWriter.flush();
+		
+		printWriter.println("**********************************");
+		printWriter.flush();
+		
+		printWriter.println("\n");
+		printWriter.flush();
+	}
+	
+	public static List<Player> getPlayerList(){
+		return playerList;
 	}
 }

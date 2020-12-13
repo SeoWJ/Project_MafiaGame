@@ -6,6 +6,7 @@ public class Player extends Thread {
 	private String userNickName;
 	private int job;			// Mafia or Civil
 	private int jobSpecific;	// Normal or Police or MEDIC.
+	private int isAlive;
 	
 	private Socket socket;
 	private BufferedReader bufferedReader;
@@ -24,7 +25,19 @@ public class Player extends Thread {
 	}
 	
 	public void run() {
-		
+		while (true) {
+			if (bufferedReader != null) {
+				try {
+					String line = bufferedReader.readLine();
+					for(int i=0; i<MafiaGameServer.getPlayerList().size(); i++) {
+						MafiaGameServer.getPlayerList().get(i).getPrintWriter().println(userNickName + " : " + line);
+						MafiaGameServer.getPlayerList().get(i).getPrintWriter().flush();
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 
 	public int getJob() {
@@ -81,5 +94,13 @@ public class Player extends Thread {
 
 	public void setUserNickName(String userNickName) {
 		this.userNickName = userNickName;
+	}
+
+	public int getIsAlive() {
+		return isAlive;
+	}
+
+	public void setIsAlive(int isAlive) {
+		this.isAlive = isAlive;
 	}
 }
