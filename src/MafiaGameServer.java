@@ -23,6 +23,9 @@ public class MafiaGameServer {
 	public static final int MEDIC = 3;
 	
 	public static final int MAX_PLAYER = 7;
+	public static final int DISCUSS_TIME = 100;
+	public static final int DISCUSS_TIME_MAFIA = 20;
+	
 	public static final String CHATTING_END = "*SYSTEM*.ChatOff";
 	
 	public static final int SERVER_PORT = 8080;
@@ -44,8 +47,7 @@ public class MafiaGameServer {
 		
 		
 		////////// 플레이어 참여 대기(7명) /////////////////////////////////
-		//while(playerList.size() < MAX_PLAYER) {
-		while(playerList.size() < 3) {
+		while(playerList.size() < MAX_PLAYER) {
 			Socket socket = null;
 			
 			try {
@@ -86,12 +88,81 @@ public class MafiaGameServer {
 		}
 		//////////////////////////////////////////////////////////////
 		
+		///////////////// 플레이어 로비 채팅 종료 ///////////////////////////
 		for(int i=0; i<playerList.size(); i++) {
 			PrintWriter printWriter = playerList.get(i).getPrintWriter();
 			printWriter.flush();
 			
 			printWriter.println(CHATTING_END);
 			printWriter.flush();
+		}
+		
+		try {	// 10초 후 게임 시작
+			Thread.sleep(10000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}	
+		//////////////////////////////////////////////////////////////
+		
+		// ##############################################################################
+		// ######################### 게임 시작 ##############################################
+		// ##############################################################################
+		
+		////////////////////// 플레이어 직업 배정, 공지 //////////////////////
+		int playerSelectForGiveJob = 0;
+		boolean[] giveJob = new boolean[7];
+		Arrays.fill(giveJob, false);
+		
+		while(playerSelectForGiveJob < MAX_PLAYER) {
+			int random = ((int)(Math.random() * 100)) % MAX_PLAYER;
+			String job = null;
+			
+			if(giveJob[random] == true)
+				continue;
+			else {
+				if(random == 0 || random == 1) {
+					playerList.get(playerSelectForGiveJob).setJob(MAFIA);
+					playerList.get(playerSelectForGiveJob).setJobSpecific(NONE);
+					job = "마피아";
+				}
+				else if(random == 2) {
+					playerList.get(playerSelectForGiveJob).setJob(CIVIL);
+					playerList.get(playerSelectForGiveJob).setJobSpecific(POLICE);
+					job = "경찰";
+				}
+				else if(random == 3) {
+					playerList.get(playerSelectForGiveJob).setJob(CIVIL);
+					playerList.get(playerSelectForGiveJob).setJobSpecific(MEDIC);
+					job = "의사";
+				}
+				else {
+					playerList.get(playerSelectForGiveJob).setJob(CIVIL);
+					playerList.get(playerSelectForGiveJob).setJobSpecific(NORMAL_CIVIL);
+					job = "시민";
+				}
+				
+				PrintWriter printWriter = playerList.get(playerSelectForGiveJob).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println("**********************************");
+				printWriter.flush();
+				
+				printWriter.println("당신의 직업은 \"" + job +"\" 입니다.");
+				printWriter.flush();
+				
+				printWriter.println("**********************************");
+				printWriter.flush();
+				
+				System.out.println("debug : 직업 공지 " + job);
+				
+				playerSelectForGiveJob++;
+				giveJob[random] = true;
+			}
+		}
+		///////////////////////////////////////////////////////////////
+		
+		while(true) {
+			
 		}
 	}
 	
