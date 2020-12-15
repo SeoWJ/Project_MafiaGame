@@ -6,11 +6,14 @@ public class Player extends Thread {
 	private String userNickName;
 	private int job;			// Mafia or Civil
 	private int jobSpecific;	// Normal or Police or MEDIC.
-	private int isAlive;
+	private boolean isAlive;
+	private boolean vote;
 	
 	private Socket socket;
 	private BufferedReader bufferedReader;
 	private PrintWriter printWriter;
+	
+	public static final String THIS_IS_VOTE_PAPER = "*SYSTEM*.This_Is_Vote_Paper";
 	
 	public Player(Socket socket) {
 		this.socket = socket;
@@ -21,7 +24,9 @@ public class Player extends Thread {
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}		
+		}
+		this.setIsAlive(true);
+		this.setVote(false);
 	}
 	
 	public void run() {
@@ -29,9 +34,15 @@ public class Player extends Thread {
 			if (bufferedReader != null) {
 				try {
 					String line = bufferedReader.readLine();
-					for(int i=0; i<MafiaGameServer.getPlayerList().size(); i++) {
-						MafiaGameServer.getPlayerList().get(i).getPrintWriter().println(userNickName + " : " + line);
-						MafiaGameServer.getPlayerList().get(i).getPrintWriter().flush();
+					if(line.contains(THIS_IS_VOTE_PAPER)) {
+						line = line.replace(THIS_IS_VOTE_PAPER, "");
+						MafiaGameServer.vote(userNumber, line);
+					}
+					else {
+						for (int i = 0; i < MafiaGameServer.getPlayerList().size(); i++) {
+							MafiaGameServer.getPlayerList().get(i).getPrintWriter().println(userNickName + " : " + line);
+							MafiaGameServer.getPlayerList().get(i).getPrintWriter().flush();
+						}
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -96,11 +107,15 @@ public class Player extends Thread {
 		this.userNickName = userNickName;
 	}
 
-	public int getIsAlive() {
+	public boolean getIsAlive() {
 		return isAlive;
 	}
 
-	public void setIsAlive(int isAlive) {
+	public void setIsAlive(boolean isAlive) {
 		this.isAlive = isAlive;
+	}
+
+	public void setVote(boolean vote) {
+		this.vote = vote;
 	}
 }

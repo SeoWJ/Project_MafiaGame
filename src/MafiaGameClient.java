@@ -44,12 +44,13 @@ public class MafiaGameClient {
 		printWriter.flush();
 		////////////////////////////////////////
 		
-		//////////// 채팅을 위한 송신 쓰레드 개설 /////////////
-		ClientSendThread clientSendThread = new ClientSendThread(printWriter);
-		clientSendThread.start();
+		////////// 게임시작 대기, 채팅(메인쓰레드 : 수신) ///////////////
+		
+		////////////채팅을 위한 송신 쓰레드 개설 /////////////
+		ClientSendThread lobbyChattingSend = new ClientSendThread(printWriter);
+		lobbyChattingSend.start();
 		//////////////////////////////////////////////
 		
-		////////// 게임시작 대기, 채팅(메인쓰레드 : 수신) ///////////////
 		while (true) {
 			if (bufferedReader != null) {
 				try {
@@ -58,8 +59,7 @@ public class MafiaGameClient {
 						System.out.println("채팅이 종료되었습니다.\n");
 						System.out.println("게임이 10초 후 시작됩니다.\n");
 						System.out.println("게임 시작을 위해 Enter를 눌러주세요.\n");
-						clearScreen();
-						clientSendThread.setChattingStatus(CHATTING_OFF);
+						lobbyChattingSend.setChattingStatus(CHATTING_OFF);
 						// 송신 쓰레드에서 scanner.nextLine()으로 대기중인 쓰레드를 강제로 종료시킬 방법이 없음.
 						// BufferedReader에 System.in을 연결해보고 이것저것 시도해봤지만 도저히 없음.
 						// 따라서 엔터를 누르게 유도함으로써 송신쓰레드를 종료하게 만듦.
@@ -71,11 +71,14 @@ public class MafiaGameClient {
 				}
 			}
 		}
+		clearScreen();
 		///////////////////////////////////////////////////////
 		
 		// ##############################################################################
 		// ######################### 게임 시작 ##############################################
 		// ##############################################################################
+		
+		boolean dead = false;
 		
 		///////////////// 직업 획득 //////////////////////////////
 		int jobRecvNoticeCnt = 0;
@@ -91,12 +94,54 @@ public class MafiaGameClient {
 		}
 		//////////////////////////////////////////////////////
 		
+		/////////////// Phase 1. Daytime ///////////////////////////////////
+		ClientSendThread dayTimeDiscussSend = new ClientSendThread(printWriter);
+		
+		if(!dead) {			
+			dayTimeDiscussSend.start();
+		}
+		
+		while(true) {
+			if (bufferedReader != null) {
+				try {
+					String line = bufferedReader.readLine();
+					if(line.equals(MafiaGameServer.CHATTING_END)) {		// 12.15 여기 작동 안됨
+						System.out.println("토론이 종료되었습니다.\n");
+						System.out.println("5초 후 투표가 진행됩니다.\n");
+						System.out.println("Enter를 눌러주세요.\n");
+						dayTimeDiscussSend.setChattingStatus(CHATTING_OFF);
+						break;
+					}
+					System.out.println(line);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
 		try {
-			Thread.sleep(1000000);
+			Thread.sleep(5 * 1000);
 		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		////////////////////////////////////////////////////////////////
+		
+		//////////////Phase 2. Vote For Execution  ////////////////////////////
+		ClientSendThread voteForExecution = new ClientSendThread(printWriter);
+		if(!dead) {
+			voteForExecution.setVote(true);
+			voteForExecution.start();
+		}
+		
+		String getVoteResult;
+		try {
+			getVoteResult = bufferedReader.readLine();
+			System.out.println(getVoteResult);
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		////////////////////////////////////////////////////////////////
 	}
 	
 	public static void clearScreen() {

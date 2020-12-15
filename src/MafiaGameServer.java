@@ -27,10 +27,13 @@ public class MafiaGameServer {
 	public static final int DISCUSS_TIME_MAFIA = 20;
 	
 	public static final String CHATTING_END = "*SYSTEM*.ChatOff";
+	public static final String VOTE_EXECUTION = "*SYSTEM*.Vote_Execution";
+	public static final String YOU_ARE_DEAD = "*System*.You_Are_Dead";
 	
 	public static final int SERVER_PORT = 8080;
 	
 	private static List<Player> playerList = new ArrayList<Player>();
+	private static String[] ballotBox = new String[MAX_PLAYER];
 	
 	public static void main(String[] args) {
 		ServerSocket serverSocket = null;
@@ -90,6 +93,7 @@ public class MafiaGameServer {
 		
 		///////////////// 플레이어 로비 채팅 종료 ///////////////////////////
 		for(int i=0; i<playerList.size(); i++) {
+			playerList.get(i).setUserNumber(i);
 			PrintWriter printWriter = playerList.get(i).getPrintWriter();
 			printWriter.flush();
 			
@@ -161,9 +165,117 @@ public class MafiaGameServer {
 		}
 		///////////////////////////////////////////////////////////////
 		
-		while(true) {
+		/////////////// Phase 1. Daytime ///////////////////////////////////
+		int dayCount = 1;
+		for(int i=0; i<playerList.size(); i++) {
+			PrintWriter printWriter = playerList.get(i).getPrintWriter();
+			printWriter.flush();
 			
+			printWriter.println("Day " + dayCount + ". 낮이 되었습니다.");
+			printWriter.flush();
+			
+			printWriter.println("지금부터 " + DISCUSS_TIME + " 초 동안 자유롭게 토론하실 수 있습니다.");
+			printWriter.flush();
 		}
+		
+		try {
+			//Thread.sleep(DISCUSS_TIME * 1000);
+			Thread.sleep(10000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		for(int i=0; i<playerList.size(); i++) {			// 플레이어 채팅 종료
+			PrintWriter printWriter = playerList.get(i).getPrintWriter();
+			printWriter.flush();
+			
+			printWriter.println(CHATTING_END);
+			printWriter.flush();
+		}
+		
+		try {
+			Thread.sleep(5 * 1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		///////////////////////////////////////////////////////////////
+		
+		////////////// Phase 2. Vote For Execution  ////////////////////////////
+		int[] voteResult = new int[MAX_PLAYER];
+		Arrays.fill(ballotBox, null);
+		Arrays.fill(voteResult, 0);
+		
+		for(int i=0; i<playerList.size(); i++) {
+			PrintWriter printWriter = playerList.get(i).getPrintWriter();
+			printWriter.flush();
+			
+			printWriter.println("투표를 개시하겠습니다.");
+			printWriter.flush();
+			
+			printWriter.println("투표는 10초간 진행됩니다.");
+			printWriter.flush();
+			
+			printWriter.print("처형하고자 하는 대상의 닉네임을 적어 주십시오 : ");
+			printWriter.flush();
+		}
+		
+		try {
+			Thread.sleep(10 * 1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		int highestResult = 0;
+		int highestUser = -1;
+		for(int i=0; i<ballotBox.length; i++) {		// 개표
+			if(!playerList.get(i).getIsAlive())			// 죽은 플레이어의 표는 스킵.
+				continue;
+			else {
+				for(int j=0; j<playerList.size(); j++) {
+					if(ballotBox[i].equals(playerList.get(j).getUserNickName())) {
+						voteResult[j]++;
+						highestUser = highestResult > voteResult[j] ? highestUser : j;
+						highestResult = highestResult > voteResult[j] ? highestResult : voteResult[j];
+						break;
+					}
+				}
+			}
+		}
+		
+		boolean voteFailed = false;
+		for(int i=0; i<MAX_PLAYER; i++) {
+			if(voteResult[i] == highestResult && i != highestUser) {
+				voteFailed = true;
+			}
+		}
+		
+		if(voteFailed) {
+			for(int i=0; i<playerList.size(); i++) {
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println("투표 결과 동점으로 아무도 처형되지 않았습니다.");
+				printWriter.flush();
+			}
+		}
+		else {
+			playerList.get(highestUser).setIsAlive(false);
+			
+			for(int i=0; i<playerList.size(); i++) {
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println("투표 결과 \"" + playerList.get(highestUser).getUserNickName() + "\" 님이 처형되었습니다.");
+				printWriter.flush();
+				
+				if(i == highestUser) {
+					printWriter.println(YOU_ARE_DEAD);
+					printWriter.flush();
+				}
+			}
+		}
+		
+		///////////////////////////////////////////////////////////////
 	}
 	
 	public static void lobbyEnter(PrintWriter printWriter) {
@@ -226,5 +338,9 @@ public class MafiaGameServer {
 	
 	public static List<Player> getPlayerList(){
 		return playerList;
+	}
+	
+	public static void vote(int userNumber, String target) {
+		ballotBox[userNumber] = target;
 	}
 }
