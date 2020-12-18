@@ -12,9 +12,9 @@ public class MafiaGameClient {
 	
 	public static void main(String args[]) {
 		if(args.length != 1) {
-			System.out.println("접속 방법 : java -jar MafiaGameClient.jar <Server IP>");
-			System.exit(-1);
-		}
+		System.out.println("접속 방법 : java -jar MafiaGameClient.jar <Server IP>");
+		System.exit(-1); }
+		 
 		
 		Scanner scanner = new Scanner(System.in);
 		
@@ -50,12 +50,11 @@ public class MafiaGameClient {
 		ClientSendThread lobbyChattingSend = new ClientSendThread(printWriter);
 		lobbyChattingSend.start();
 		//////////////////////////////////////////////
-		
 		while (true) {
 			if (bufferedReader != null) {
 				try {
 					String line = bufferedReader.readLine();
-					if(line.equals(MafiaGameServer.CHATTING_END)) {
+					if(line.contains(MafiaGameServer.CHATTING_END)) {
 						System.out.println("채팅이 종료되었습니다.\n");
 						System.out.println("게임이 10초 후 시작됩니다.\n");
 						System.out.println("게임 시작을 위해 Enter를 눌러주세요.\n");
@@ -71,7 +70,6 @@ public class MafiaGameClient {
 				}
 			}
 		}
-		clearScreen();
 		///////////////////////////////////////////////////////
 		
 		// ##############################################################################
@@ -91,6 +89,7 @@ public class MafiaGameClient {
 				e.printStackTrace();
 			}
 			System.out.println(line);
+			jobRecvNoticeCnt++;
 		}
 		//////////////////////////////////////////////////////
 		
@@ -105,7 +104,7 @@ public class MafiaGameClient {
 			if (bufferedReader != null) {
 				try {
 					String line = bufferedReader.readLine();
-					if(line.equals(MafiaGameServer.CHATTING_END)) {		// 12.15 여기 작동 안됨
+					if(line.contains(MafiaGameServer.CHATTING_END)) { // ClientSendThread line 22, 33 에서 Exception in thread "Thread-2" java.util.NoSuchElementException: No line found at java.util.Scanner.nextLine(Unknown Source) at ClientSendThread.run(ClientSendThread.java:22)
 						System.out.println("토론이 종료되었습니다.\n");
 						System.out.println("5초 후 투표가 진행됩니다.\n");
 						System.out.println("Enter를 눌러주세요.\n");

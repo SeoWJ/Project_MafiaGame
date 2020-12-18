@@ -37,6 +37,7 @@ public class ClientSendThread extends Thread {
 				printWriter.println(input);
 				printWriter.flush();
 			}
+			clearScreen();
 			System.out.println("debug : Chatting OFF");
 		}		
 		
@@ -49,5 +50,10 @@ public class ClientSendThread extends Thread {
 	
 	public void setVote(boolean b) {
 		this.vote = b;
+	}
+	
+	public static void clearScreen() {
+		for(int i=0; i<50; i++)
+			System.out.println();
 	}
 }
