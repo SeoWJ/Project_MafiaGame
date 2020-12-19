@@ -4,17 +4,18 @@ import java.util.Scanner;
 public class ClientSendThread extends Thread {
 	private boolean chattingStatus;
 	private PrintWriter printWriter;
+	private Scanner scanner;
 	private boolean vote;
 	
 	public static final String THIS_IS_VOTE_PAPER = "*SYSTEM*.This_Is_Vote_Paper";
 	
-	public ClientSendThread(PrintWriter printWriter) {
+	public ClientSendThread(PrintWriter printWriter, Scanner scanner) {
+		this.scanner = scanner;
 		this.printWriter = printWriter;
 		vote = false;
 	}
 	
 	public void run() {
-		Scanner scanner = new Scanner(System.in);
 		chattingStatus = MafiaGameClient.CHATTING_ON;
 		
 		if(vote) {
@@ -40,8 +41,6 @@ public class ClientSendThread extends Thread {
 			clearScreen();
 			System.out.println("debug : Chatting OFF");
 		}		
-		
-		scanner.close();
 	}
 	
 	public void setChattingStatus(boolean b) {

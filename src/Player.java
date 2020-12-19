@@ -4,8 +4,7 @@ import java.net.*;
 public class Player extends Thread {
 	private int userNumber;
 	private String userNickName;
-	private int job;			// Mafia or Civil
-	private int jobSpecific;	// Normal or Police or MEDIC.
+	private int job;			// Mafia, Civil, Police, Medic
 	private boolean isAlive;
 	private boolean vote;
 	
@@ -65,14 +64,6 @@ public class Player extends Thread {
 
 	public void setUserNumber(int userNumber) {
 		this.userNumber = userNumber;
-	}
-
-	public int getJobSpecific() {
-		return jobSpecific;
-	}
-
-	public void setJobSpecific(int jobSpecific) {
-		this.jobSpecific = jobSpecific;
 	}
 
 	public Socket getSocket() {

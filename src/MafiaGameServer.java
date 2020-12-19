@@ -13,12 +13,9 @@ import java.util.*;
 import java.io.*;
 import java.net.*;
 
-public class MafiaGameServer {
-	public static final int MAFIA = 1;
-	public static final int CIVIL = 2;
-	
-	public static final int NONE = 0;
-	public static final int NORMAL_CIVIL = 1;
+public class MafiaGameServer {	
+	public static final int MAFIA = 0;
+	public static final int CIVIL = 1;
 	public static final int POLICE = 2;
 	public static final int MEDIC = 3;
 	
@@ -29,6 +26,8 @@ public class MafiaGameServer {
 	public static final String CHATTING_END = "*SYSTEM*.ChatOff";
 	public static final String VOTE_EXECUTION = "*SYSTEM*.Vote_Execution";
 	public static final String YOU_ARE_DEAD = "*System*.You_Are_Dead";
+	public static final String VOTE_END = "*SYSTEM*.Vote_End";
+	public static final String GAME_END = "*SYSTEM*.Game_End";
 	
 	public static final int SERVER_PORT = 8080;
 	
@@ -112,6 +111,13 @@ public class MafiaGameServer {
 		// ######################### 게임 시작 ##############################################
 		// ##############################################################################
 		
+		int dayCount = 0;
+		
+		int aliveMafia = 2;
+		int aliveCivil = 5;
+		int alivePolice = 1;
+		int aliveMedic = 1;
+		
 		////////////////////// 플레이어 직업 배정, 공지 //////////////////////
 		int playerSelectForGiveJob = 0;
 		boolean[] giveJob = new boolean[7];
@@ -126,22 +132,18 @@ public class MafiaGameServer {
 			else {
 				if(random == 0 || random == 1) {
 					playerList.get(playerSelectForGiveJob).setJob(MAFIA);
-					playerList.get(playerSelectForGiveJob).setJobSpecific(NONE);
 					job = "마피아";
 				}
 				else if(random == 2) {
-					playerList.get(playerSelectForGiveJob).setJob(CIVIL);
-					playerList.get(playerSelectForGiveJob).setJobSpecific(POLICE);
+					playerList.get(playerSelectForGiveJob).setJob(POLICE);
 					job = "경찰";
 				}
 				else if(random == 3) {
-					playerList.get(playerSelectForGiveJob).setJob(CIVIL);
-					playerList.get(playerSelectForGiveJob).setJobSpecific(MEDIC);
+					playerList.get(playerSelectForGiveJob).setJob(MEDIC);
 					job = "의사";
 				}
 				else {
 					playerList.get(playerSelectForGiveJob).setJob(CIVIL);
-					playerList.get(playerSelectForGiveJob).setJobSpecific(NORMAL_CIVIL);
 					job = "시민";
 				}
 				
@@ -166,7 +168,8 @@ public class MafiaGameServer {
 		///////////////////////////////////////////////////////////////
 		
 		/////////////// Phase 1. Daytime ///////////////////////////////////
-		int dayCount = 1;
+		dayCount++;
+		
 		for(int i=0; i<playerList.size(); i++) {
 			PrintWriter printWriter = playerList.get(i).getPrintWriter();
 			printWriter.flush();
@@ -212,15 +215,15 @@ public class MafiaGameServer {
 			printWriter.println("투표를 개시하겠습니다.");
 			printWriter.flush();
 			
-			printWriter.println("투표는 10초간 진행됩니다.");
+			printWriter.println("투표는 20초간 진행됩니다.");
 			printWriter.flush();
 			
-			printWriter.print("처형하고자 하는 대상의 닉네임을 적어 주십시오 : ");
+			printWriter.println("처형하고자 하는 대상의 닉네임을 적어 주십시오");
 			printWriter.flush();
 		}
 		
 		try {
-			Thread.sleep(10 * 1000);
+			Thread.sleep(20 * 1000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -261,19 +264,99 @@ public class MafiaGameServer {
 		else {
 			playerList.get(highestUser).setIsAlive(false);
 			
-			for(int i=0; i<playerList.size(); i++) {
-				PrintWriter printWriter = playerList.get(i).getPrintWriter();
-				printWriter.flush();
-				
-				printWriter.println("투표 결과 \"" + playerList.get(highestUser).getUserNickName() + "\" 님이 처형되었습니다.");
-				printWriter.flush();
-				
-				if(i == highestUser) {
-					printWriter.println(YOU_ARE_DEAD);
+			int deadPlayerJob = playerList.get(highestUser).getJob();
+			String deadPlayerJobStr = null;
+			
+			switch(deadPlayerJob) {
+			case MAFIA :
+				aliveMafia--;
+				deadPlayerJobStr = "마피아";
+				break;
+			case CIVIL :
+				aliveCivil--;
+				deadPlayerJobStr = "시민";
+				break;
+			case POLICE :
+				aliveCivil--;
+				alivePolice--;
+				deadPlayerJobStr = "경찰";
+				break;
+			case MEDIC :
+				aliveCivil--;
+				aliveMedic--;
+				deadPlayerJobStr = "의사";
+				break;
+			}
+			
+			if(aliveMafia == 0) {		// 마피아가 모두 처형당하면 게임 종료.
+				for(int i=0; i<playerList.size(); i++) {
+					PrintWriter printWriter = playerList.get(i).getPrintWriter();
+					printWriter.flush();
+					
+					printWriter.println("마피아가 모두 처형되었습니다.");
+					printWriter.flush();
+					
+					printWriter.println("시민의 승리로 게임이 종료되었습니다.");
+					printWriter.flush();
+					
+					printWriter.println(GAME_END);
+					printWriter.flush();
+				}
+				try {
+					Thread.sleep(10 * 1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.exit(0);
+			} else {
+				for(int i=0; i<playerList.size(); i++) {
+					PrintWriter printWriter = playerList.get(i).getPrintWriter();
+					printWriter.flush();
+					
+					printWriter.println("투표 결과 \"" + playerList.get(highestUser).getUserNickName() + "\" 님이 처형되었습니다.");
+					printWriter.flush();
+					
+					printWriter.println("\"" + playerList.get(highestUser).getUserNickName() + "\" 님은 " + deadPlayerJobStr + "(이)였습니다.");
+					printWriter.flush();
+					
+					if(i == highestUser) {
+						printWriter.println(YOU_ARE_DEAD);
+						printWriter.flush();
+					}
+					
+					printWriter.println(VOTE_END);
 					printWriter.flush();
 				}
 			}
 		}
+		///////////////////////////////////////////////////////////////
+		
+		/////////////// Phase 3. Nighttime ///////////////////////////////////
+		for(int i=0; i<playerList.size(); i++) {
+			PrintWriter printWriter = playerList.get(i).getPrintWriter();
+			printWriter.flush();
+			
+			printWriter.println("Day " + dayCount + ". 밤이 되었습니다.");
+			printWriter.flush();
+			
+			if(aliveMafia > 1) {
+				printWriter.println("지금부터 " + DISCUSS_TIME_MAFIA + "초 동안 마피아들이 살해할 대상에 대한 토론을 진행합니다.");
+				printWriter.flush();
+			}
+		}
+		
+		if(aliveMafia > 1) {		// 마피아가 2명 이상이면 회의시간 20초 부여. 미만인 경우 바로 살해대상 수신.
+			try {
+				Thread.sleep(20 * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		///////////////////////////////////////////////////////////////
+		
+		/////////////// Phase 4. Mafia kills civil ////////////////////////////////
+		
+		
 		
 		///////////////////////////////////////////////////////////////
 	}

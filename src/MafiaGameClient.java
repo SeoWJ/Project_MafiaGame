@@ -47,7 +47,7 @@ public class MafiaGameClient {
 		////////// 게임시작 대기, 채팅(메인쓰레드 : 수신) ///////////////
 		
 		////////////채팅을 위한 송신 쓰레드 개설 /////////////
-		ClientSendThread lobbyChattingSend = new ClientSendThread(printWriter);
+		ClientSendThread lobbyChattingSend = new ClientSendThread(printWriter, scanner);
 		lobbyChattingSend.start();
 		//////////////////////////////////////////////
 		while (true) {
@@ -94,7 +94,7 @@ public class MafiaGameClient {
 		//////////////////////////////////////////////////////
 		
 		/////////////// Phase 1. Daytime ///////////////////////////////////
-		ClientSendThread dayTimeDiscussSend = new ClientSendThread(printWriter);
+		ClientSendThread dayTimeDiscussSend = new ClientSendThread(printWriter, scanner);
 		
 		if(!dead) {			
 			dayTimeDiscussSend.start();
@@ -104,7 +104,7 @@ public class MafiaGameClient {
 			if (bufferedReader != null) {
 				try {
 					String line = bufferedReader.readLine();
-					if(line.contains(MafiaGameServer.CHATTING_END)) { // ClientSendThread line 22, 33 에서 Exception in thread "Thread-2" java.util.NoSuchElementException: No line found at java.util.Scanner.nextLine(Unknown Source) at ClientSendThread.run(ClientSendThread.java:22)
+					if(line.contains(MafiaGameServer.CHATTING_END)) {
 						System.out.println("토론이 종료되었습니다.\n");
 						System.out.println("5초 후 투표가 진행됩니다.\n");
 						System.out.println("Enter를 눌러주세요.\n");
@@ -126,19 +126,51 @@ public class MafiaGameClient {
 		////////////////////////////////////////////////////////////////
 		
 		//////////////Phase 2. Vote For Execution  ////////////////////////////
-		ClientSendThread voteForExecution = new ClientSendThread(printWriter);
+		int voteRecvNoticeCnt = 0;
+		while (voteRecvNoticeCnt < 3) {
+			String line = null;
+			try {
+				line = bufferedReader.readLine();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			System.out.println(line);
+			voteRecvNoticeCnt++;
+		}
+		System.out.print(">> ");
+		
+		ClientSendThread voteForExecution = new ClientSendThread(printWriter, scanner);
 		if(!dead) {
 			voteForExecution.setVote(true);
 			voteForExecution.start();
 		}
 		
-		String getVoteResult;
-		try {
-			getVoteResult = bufferedReader.readLine();
-			System.out.println(getVoteResult);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		while (true) {
+			String getVoteResult = null;
+			try {
+				getVoteResult = bufferedReader.readLine();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			
+			if(getVoteResult.equals(MafiaGameServer.YOU_ARE_DEAD)) {
+				dead = true;
+				System.out.println("당신은 사망하였습니다.");
+				System.out.println("지금부터 대화에 참여하실 수 없으며, 관전만 가능합니다.");
+			}
+			else if(getVoteResult.equals(MafiaGameServer.VOTE_END))
+				break;
+			else if(getVoteResult.equals(MafiaGameServer.GAME_END)) {
+				try {
+					Thread.sleep(5 * 1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				System.exit(0);
+			}
+			else
+				System.out.println(getVoteResult);
 		}
 		////////////////////////////////////////////////////////////////
 	}
