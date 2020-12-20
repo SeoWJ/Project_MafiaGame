@@ -10,19 +10,20 @@
 */
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.io.*;
 import java.net.*;
 
-public class MafiaGameServer {	
+public class MafiaGameServer {
 	public static final int MAFIA = 0;
 	public static final int CIVIL = 1;
 	public static final int POLICE = 2;
 	public static final int MEDIC = 3;
-	
+
 	public static final int MAX_PLAYER = 7;
 	public static final int DISCUSS_TIME = 100;
 	public static final int DISCUSS_TIME_MAFIA = 20;
-	
+
 	public static final String CHATTING_END = "*SYSTEM*.ChatOff";
 	public static final String VOTE_EXECUTION = "*SYSTEM*.Vote_Execution";
 	public static final String YOU_ARE_DEAD = "*System*.You_Are_Dead";
@@ -32,15 +33,16 @@ public class MafiaGameServer {
 	public static final String MAFIA_DISCUSS_OFF = "*SYSTEM*.Mafia_Discuss_Off";
 	public static final String GAME_END = "*SYSTEM*.Game_End";
 	public static final String CLEAR_SCREEN = "*SYSTEM*.Clear_Screen";
-	
+
 	public static final int SERVER_PORT = 8080;
-	
+
 	private static List<Player> playerList = new ArrayList<Player>();
 	private static String[] ballotBox = new String[MAX_PLAYER];
-	
+	private static Semaphore semaphore = new Semaphore(1);
+
 	public static void main(String[] args) {
 		ServerSocket serverSocket = null;
-		
+
 		/////////// 서버 생성 파트 ///////////////////////////////////////
 		try {
 			serverSocket = new ServerSocket(SERVER_PORT);
@@ -50,88 +52,85 @@ public class MafiaGameServer {
 			System.exit(-1);
 		}
 		/////////////////////////////////////////////////////////////
-		
-		
+
+
 		////////// 플레이어 참여 대기(7명) /////////////////////////////////
 		while(playerList.size() < MAX_PLAYER) {
 			Socket socket = null;
-			
+
 			try {
 				socket = serverSocket.accept();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}		// 플레이어 연결
-			
+
 			Player player = new Player(socket);
-			
+
 			String userNickName = null;
-			
+
 			BufferedReader bufferedReader = player.getBufferedReader();
 			try {
 				userNickName = bufferedReader.readLine();
 			} catch (IOException e) {
 				e.printStackTrace();
 			} // 플레이어 닉네임 획득
-			
+
 			player.setUserNickName(userNickName);
-			System.out.println("debug : 닉네임 획득 성공");
 			playerList.add(player);
 			player.start();
-			
+
 			for(int i=0; i<playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
-				
+
 				if(playerList.get(i).getSocket().equals(socket)) {
-					lobbyEnter(printWriter);					
-					System.out.println("debug : 접속자 안내 메세지 출력");
+					lobbyEnter(printWriter);
 				}
 				else {
-					lobbyBroadCast(printWriter, player);					
-					System.out.println("debug : 브로드캐스트 출력");
+					lobbyBroadCast(printWriter, player);
 				}
 			}		// 참가자들에게 브로드캐스트.
 		}
 		//////////////////////////////////////////////////////////////
-		
+
 		///////////////// 플레이어 로비 채팅 종료 ///////////////////////////
 		for(int i=0; i<playerList.size(); i++) {
 			playerList.get(i).setUserNumber(i);
 			PrintWriter printWriter = playerList.get(i).getPrintWriter();
 			printWriter.flush();
-			
+
 			printWriter.println(CHATTING_END);
 			printWriter.flush();
 		}
-		
+
 		try {	// 10초 후 게임 시작
 			Thread.sleep(10000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
-		}	
+		}
 		//////////////////////////////////////////////////////////////
-		
+
 		// ##############################################################################
 		// ######################### 게임 시작 ##############################################
 		// ##############################################################################
-		
+
 		int dayCount = 0;
-		
+
 		int aliveMafia = 2;
 		int aliveCivil = 5;
 		int alivePolice = 1;
 		int aliveMedic = 1;
-		
+
 		////////////////////// 플레이어 직업 배정, 공지 //////////////////////
 		int playerSelectForGiveJob = 0;
 		boolean[] giveJob = new boolean[7];
 		Arrays.fill(giveJob, false);
-		
+
 		while(playerSelectForGiveJob < MAX_PLAYER) {
 			int random = ((int)(Math.random() * 100)) % MAX_PLAYER;
 			String job = null;
 			int jobNum;
-			
+
 			if(giveJob[random] == true)
 				continue;
 			else {
@@ -155,36 +154,34 @@ public class MafiaGameServer {
 					job = "시민";
 					jobNum = CIVIL;
 				}
-				
+
 				PrintWriter printWriter = playerList.get(playerSelectForGiveJob).getPrintWriter();
 				printWriter.flush();
-				
+
 				printWriter.println((Integer.toString(jobNum)));
 				printWriter.flush();
-				
+
 				printWriter.println("**********************************");
 				printWriter.flush();
-				
+
 				printWriter.println("당신의 직업은 \"" + job +"\" 입니다.");
 				printWriter.flush();
-				
+
 				printWriter.println("**********************************");
 				printWriter.flush();
-				
-				System.out.println("debug : 직업 공지 " + job);
-				
+
 				playerSelectForGiveJob++;
 				giveJob[random] = true;
 			}
 		}
-		
+
 		try {
 			Thread.sleep(10 * 1000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
 		///////////////////////////////////////////////////////////////
-		
+
 		while (true) {
 			/////////////// Phase 1. Daytime ///////////////////////////////////
 			dayCount++;
@@ -192,7 +189,7 @@ public class MafiaGameServer {
 			for (int i = 0; i < playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
-				
+
 				printWriter.println(CLEAR_SCREEN);
 				printWriter.flush();
 
@@ -233,7 +230,7 @@ public class MafiaGameServer {
 			for (int i = 0; i < playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
-				
+
 				printWriter.println(CLEAR_SCREEN);
 				printWriter.flush();
 
@@ -286,7 +283,7 @@ public class MafiaGameServer {
 
 					printWriter.println("투표 결과 동점으로 아무도 처형되지 않았습니다.");
 					printWriter.flush();
-					
+
 					printWriter.println(VOTE_END);
 					printWriter.flush();
 				}
@@ -297,24 +294,24 @@ public class MafiaGameServer {
 				String deadPlayerJobStr = null;
 
 				switch (deadPlayerJob) {
-				case MAFIA:
-					aliveMafia--;
-					deadPlayerJobStr = "마피아";
-					break;
-				case CIVIL:
-					aliveCivil--;
-					deadPlayerJobStr = "시민";
-					break;
-				case POLICE:
-					aliveCivil--;
-					alivePolice--;
-					deadPlayerJobStr = "경찰";
-					break;
-				case MEDIC:
-					aliveCivil--;
-					aliveMedic--;
-					deadPlayerJobStr = "의사";
-					break;
+					case MAFIA:
+						aliveMafia--;
+						deadPlayerJobStr = "마피아";
+						break;
+					case CIVIL:
+						aliveCivil--;
+						deadPlayerJobStr = "시민";
+						break;
+					case POLICE:
+						aliveCivil--;
+						alivePolice--;
+						deadPlayerJobStr = "경찰";
+						break;
+					case MEDIC:
+						aliveCivil--;
+						aliveMedic--;
+						deadPlayerJobStr = "의사";
+						break;
 				}
 
 				for (int i = 0; i < playerList.size(); i++) {
@@ -384,7 +381,7 @@ public class MafiaGameServer {
 					}
 				}
 			}
-			
+
 			try {
 				Thread.sleep(10 * 1000);
 			} catch (InterruptedException e1) {
@@ -396,7 +393,7 @@ public class MafiaGameServer {
 			for (int i = 0; i < playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
-				
+
 				printWriter.println(CLEAR_SCREEN);
 				printWriter.flush();
 
@@ -468,7 +465,7 @@ public class MafiaGameServer {
 			for (int i = 0; i < playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
-				
+
 				printWriter.println(CLEAR_SCREEN);
 				printWriter.flush();
 
@@ -554,26 +551,37 @@ public class MafiaGameServer {
 				int deadPlayerJob = playerList.get(mafiaKillingTargetFinal).getJob();
 
 				switch (deadPlayerJob) {
-				case MAFIA:
-					aliveMafia--;
-					deadPlayerJobStr = "마피아";
-					break;
-				case CIVIL:
-					aliveCivil--;
-					deadPlayerJobStr = "시민";
-					break;
-				case POLICE:
-					aliveCivil--;
-					alivePolice--;
-					deadPlayerJobStr = "경찰";
-					break;
-				case MEDIC:
-					aliveCivil--;
-					aliveMedic--;
-					deadPlayerJobStr = "의사";
-					break;
+					case MAFIA:
+						aliveMafia--;
+						deadPlayerJobStr = "마피아";
+						break;
+					case CIVIL:
+						aliveCivil--;
+						deadPlayerJobStr = "시민";
+						break;
+					case POLICE:
+						aliveCivil--;
+						alivePolice--;
+						deadPlayerJobStr = "경찰";
+						break;
+					case MEDIC:
+						aliveCivil--;
+						aliveMedic--;
+						deadPlayerJobStr = "의사";
+						break;
 				}
 			}
+			
+			String policeTargetJob = null;
+			if (playerList.get(policeCheckingTarget).getJob() == MAFIA)
+				policeTargetJob = "마피아";
+			else if (playerList.get(policeCheckingTarget).getJob() == MEDIC)
+				policeTargetJob = "의사";
+			else if (playerList.get(policeCheckingTarget).getJob() == POLICE)
+				policeTargetJob = "경찰";
+			else if (playerList.get(policeCheckingTarget).getJob() == CIVIL)
+				policeTargetJob = "시민";
+			
 			for (int i = 0; i < playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
@@ -597,6 +605,11 @@ public class MafiaGameServer {
 
 					printWriter.println("아무도 죽지 않았습니다.");
 					printWriter.flush();
+					
+					if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
+						printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName() + "\" 님은 " + policeTargetJob + "입니다.");
+						printWriter.flush();
+					}
 
 					printWriter.println(VOTE_END);
 					printWriter.flush();
@@ -606,6 +619,11 @@ public class MafiaGameServer {
 
 					printWriter.println("아무도 죽지 않았습니다.");
 					printWriter.flush();
+					
+					if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
+						printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName() + "\" 님은 " + policeTargetJob + "입니다.");
+						printWriter.flush();
+					}
 
 					printWriter.println(VOTE_END);
 					printWriter.flush();
@@ -624,18 +642,7 @@ public class MafiaGameServer {
 						playerList.get(i).setIsAlive(false);
 					}
 					if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
-						String policeTargetJob = null;
-						if (playerList.get(policeCheckingTarget).getJob() == MAFIA)
-							policeTargetJob = "마피아";
-						else if (playerList.get(policeCheckingTarget).getJob() == MEDIC)
-							policeTargetJob = "의사";
-						else if (playerList.get(policeCheckingTarget).getJob() == POLICE)
-							policeTargetJob = "경찰";
-						else if (playerList.get(policeCheckingTarget).getJob() == CIVIL)
-							policeTargetJob = "시민";
-
-						printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName()
-								+ "\" 님은 " + policeTargetJob + "입니다.");
+						printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName() + "\" 님은 " + policeTargetJob + "입니다.");
 						printWriter.flush();
 					}
 
@@ -651,7 +658,7 @@ public class MafiaGameServer {
 					e.printStackTrace();
 				}
 			}
-			
+
 			try {
 				Thread.sleep(10 * 1000);
 			} catch (InterruptedException e) {
@@ -660,70 +667,76 @@ public class MafiaGameServer {
 			///////////////////////////////////////////////////////////////
 		}
 	}
-	
+
 	public static void lobbyEnter(PrintWriter printWriter) {
 		printWriter.println("\n");
 		printWriter.flush();
-		
+
 		printWriter.println("***** 게임에 참여하였습니다. *****");
 		printWriter.flush();
-		
+
 		printWriter.println("\n");
 		printWriter.flush();
-		
+
 		printWriter.println("현재 참여 인원은 " + playerList.size() + " / " + MAX_PLAYER + " 명 입니다.");
 		printWriter.flush();
-		
+
 		printWriter.println("\n");
 		printWriter.flush();
-		
+
 		printWriter.println("**********************************");
 		printWriter.flush();
-		
+
 		printWriter.println("\n");
 		printWriter.flush();
-		
+
 		printWriter.println("게임이 시작할때까지 다른 플레이어와 채팅할 수 있습니다.");
 		printWriter.flush();
-		
+
 		printWriter.println("\n");
 		printWriter.flush();
 	}
-	
-	public static void lobbyBroadCast(PrintWriter printWriter, Player player) {		
+
+	public static void lobbyBroadCast(PrintWriter printWriter, Player player) {
 		printWriter.println("\n");
 		printWriter.flush();
-		
+
 		printWriter.println("**********************************");
 		printWriter.flush();
-		
+
 		printWriter.println("\n");
 		printWriter.flush();
-		
+
 		printWriter.println("Player \"" + player.getUserNickName() + "\" 님이 게임에 참여하였습니다.");
 		printWriter.flush();
-		
+
 		printWriter.println("\n");
 		printWriter.flush();
-		
+
 		printWriter.println("현재 참여 인원은 " + playerList.size() + " / " + MAX_PLAYER + " 명 입니다.");
 		printWriter.flush();
-		
+
 		printWriter.println("\n");
 		printWriter.flush();
-		
+
 		printWriter.println("**********************************");
 		printWriter.flush();
-		
+
 		printWriter.println("\n");
 		printWriter.flush();
 	}
-	
+
 	public static List<Player> getPlayerList(){
 		return playerList;
 	}
-	
+
 	public static void vote(int userNumber, String target) {
-		ballotBox[userNumber] = target;
+		try {
+			semaphore.acquire();		// 세마포어 적용.
+			ballotBox[userNumber] = target;
+			semaphore.release();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}		
 	}
 }

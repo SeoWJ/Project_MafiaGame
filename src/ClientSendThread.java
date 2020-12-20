@@ -44,7 +44,7 @@ public class ClientSendThread extends Thread {
 				printWriter.println(input);
 				printWriter.flush();
 			}
-		}		
+		}
 	}
 	
 	public void setChattingStatus(boolean b) {

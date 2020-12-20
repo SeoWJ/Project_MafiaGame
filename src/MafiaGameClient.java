@@ -6,27 +6,28 @@ public class MafiaGameClient {
 	private static Socket socket;
 	private static BufferedReader bufferedReader;
 	private static PrintWriter printWriter;
-	
+
 	public static final boolean CHATTING_ON = true;
 	public static final boolean CHATTING_OFF = false;
-	
+
 	private static int job;
-	
-	public static void main(String args[]) {
+
+	public static void main(String[] args) {
 		if(args.length != 1) {
-		System.out.println("접속 방법 : java -jar MafiaGameClient.jar <Server IP>");
-		System.exit(-1); }
-		 
-		
+			System.out.println("접속 방법 : java -jar MafiaGameClient.jar <Server IP>");
+			System.exit(-1);
+		}
+
+
 		Scanner scanner = new Scanner(System.in);
-		
+
 		////////////// 서버 접속 //////////////////
 		try {
 			socket = new Socket(args[0], MafiaGameServer.SERVER_PORT);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		try {
 			bufferedReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			printWriter = new PrintWriter(new BufferedOutputStream(socket.getOutputStream()));
@@ -35,19 +36,19 @@ public class MafiaGameClient {
 			e.printStackTrace();
 		}
 		////////////////////////////////////////
-		
-		
+
+
 		/////////// 닉네임 입력, 전송 ////////////////
 		String nickName = null;
 		System.out.print("사용할 닉네임을 입력해 주세요 : ");
 		nickName = scanner.nextLine();
-		
+
 		printWriter.println(nickName);
 		printWriter.flush();
 		////////////////////////////////////////
-		
+
 		////////// 게임시작 대기, 채팅(메인쓰레드 : 수신) ///////////////
-		
+
 		////////////채팅을 위한 송신 쓰레드 개설 /////////////
 		ClientSendThread lobbyChattingSend = new ClientSendThread(printWriter, scanner);
 		lobbyChattingSend.start();
@@ -73,13 +74,13 @@ public class MafiaGameClient {
 			}
 		}
 		///////////////////////////////////////////////////////
-		
+
 		// ##############################################################################
 		// ######################### 게임 시작 ##############################################
 		// ##############################################################################
-		
+
 		boolean dead = false;
-		
+
 		///////////////// 직업 획득 //////////////////////////////
 		int jobRecvNoticeCnt = 0;
 		while (jobRecvNoticeCnt < 4) {
@@ -90,12 +91,12 @@ public class MafiaGameClient {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
+
 			if(jobRecvNoticeCnt == 0)
 				job = Integer.parseInt(line);
 			else
 				System.out.println(line);
-			
+
 			jobRecvNoticeCnt++;
 		}
 		//////////////////////////////////////////////////////
@@ -149,7 +150,7 @@ public class MafiaGameClient {
 				if(dead && voteRecvNoticeCnt == 3)
 					break;
 				if(line.contains(MafiaGameServer.CLEAR_SCREEN))
-					clearScreen();		
+					clearScreen();
 				else
 					System.out.println(line);
 				voteRecvNoticeCnt++;
@@ -204,7 +205,7 @@ public class MafiaGameClient {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				
+
 				if(nightTimeNotice.contains(MafiaGameServer.CLEAR_SCREEN)) {
 					clearScreen();
 					continue;
@@ -284,7 +285,7 @@ public class MafiaGameClient {
 			///////////////////////////////////////////////////////////////
 		}
 	}
-	
+
 	public static void clearScreen() {
 		for(int i=0; i<50; i++)
 			System.out.println();

@@ -20,9 +20,7 @@ public class Player extends Thread {
 		try {
 			bufferedReader = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
 			printWriter = new PrintWriter(new BufferedOutputStream(this.socket.getOutputStream()));
-			System.out.println("debug : 플레이어 생성 성공");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		this.setIsAlive(true);
@@ -136,6 +134,5 @@ public class Player extends Thread {
 
 	public void setNightTime(boolean nightTime) {
 		this.nightTime = nightTime;
-		System.out.println("debug : NightTime Set.");
 	}
 }
