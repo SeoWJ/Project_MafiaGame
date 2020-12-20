@@ -22,6 +22,9 @@ public class ClientSendThread extends Thread {
 			String input = "";
 			input = scanner.nextLine();
 			
+			printWriter.println("");
+			printWriter.flush();
+			
 			printWriter.println(THIS_IS_VOTE_PAPER + input);
 			printWriter.flush();
 			
@@ -29,6 +32,9 @@ public class ClientSendThread extends Thread {
 		}
 		
 		else {
+			printWriter.println("");
+			printWriter.flush();
+			
 			while (true) {
 				String input = "";
 				input = scanner.nextLine();

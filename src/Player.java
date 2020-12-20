@@ -7,6 +7,7 @@ public class Player extends Thread {
 	private int job;			// Mafia, Civil, Police, Medic
 	private boolean isAlive;
 	private boolean vote;
+	private boolean nightTime;
 	
 	private Socket socket;
 	private BufferedReader bufferedReader;
@@ -26,25 +27,47 @@ public class Player extends Thread {
 		}
 		this.setIsAlive(true);
 		this.setVote(false);
+		this.setNightTime(false);
 	}
 	
 	public void run() {
 		while (true) {
 			if (bufferedReader != null) {
-				try {
-					String line = bufferedReader.readLine();
-					if(line.contains(THIS_IS_VOTE_PAPER)) {
-						line = line.replace(THIS_IS_VOTE_PAPER, "");
-						MafiaGameServer.vote(userNumber, line);
-					}
-					else {
-						for (int i = 0; i < MafiaGameServer.getPlayerList().size(); i++) {
-							MafiaGameServer.getPlayerList().get(i).getPrintWriter().println(userNickName + " : " + line);
-							MafiaGameServer.getPlayerList().get(i).getPrintWriter().flush();
+				if(!nightTime) {
+					try {
+						String line = bufferedReader.readLine();
+						if(line.equals(""))
+							continue;
+						if (line.contains(THIS_IS_VOTE_PAPER)) {
+							line = line.replace(THIS_IS_VOTE_PAPER, "");
+							MafiaGameServer.vote(userNumber, line);
+						} else {
+							for (int i = 0; i < MafiaGameServer.getPlayerList().size(); i++) {
+								MafiaGameServer.getPlayerList().get(i).getPrintWriter()
+										.println(userNickName + " : " + line);
+								MafiaGameServer.getPlayerList().get(i).getPrintWriter().flush();
+							}
 						}
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
-				} catch (IOException e) {
-					e.printStackTrace();
+				}
+				else {
+					try {
+						String line = bufferedReader.readLine();
+						System.out.println("Debug : execute at nighttime");
+						if(job == MafiaGameServer.MAFIA) {
+							for (int i = 0; i < MafiaGameServer.getPlayerList().size(); i++) {
+								if (MafiaGameServer.getPlayerList().get(i).getJob() == MafiaGameServer.MAFIA) {
+									MafiaGameServer.getPlayerList().get(i).getPrintWriter()
+											.println(userNickName + " : " + line);
+									MafiaGameServer.getPlayerList().get(i).getPrintWriter().flush();
+								}
+							}
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		}
@@ -108,5 +131,10 @@ public class Player extends Thread {
 
 	public void setVote(boolean vote) {
 		this.vote = vote;
+	}
+
+	public void setNightTime(boolean nightTime) {
+		this.nightTime = nightTime;
+		System.out.println("debug : NightTime Set.");
 	}
 }

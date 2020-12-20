@@ -27,6 +27,9 @@ public class MafiaGameServer {
 	public static final String VOTE_EXECUTION = "*SYSTEM*.Vote_Execution";
 	public static final String YOU_ARE_DEAD = "*System*.You_Are_Dead";
 	public static final String VOTE_END = "*SYSTEM*.Vote_End";
+	public static final String NO_MAFIA_DISCUSS = "*SYSTEM*.No_Mafia_Discuss";
+	public static final String MAFIA_DISCUSS_ON = "*SYSTEM*.Mafia_Discuss_On";
+	public static final String MAFIA_DISCUSS_OFF = "*SYSTEM*.Mafia_Discuss_Off";
 	public static final String GAME_END = "*SYSTEM*.Game_End";
 	
 	public static final int SERVER_PORT = 8080;
@@ -126,6 +129,7 @@ public class MafiaGameServer {
 		while(playerSelectForGiveJob < MAX_PLAYER) {
 			int random = ((int)(Math.random() * 100)) % MAX_PLAYER;
 			String job = null;
+			int jobNum;
 			
 			if(giveJob[random] == true)
 				continue;
@@ -133,21 +137,28 @@ public class MafiaGameServer {
 				if(random == 0 || random == 1) {
 					playerList.get(playerSelectForGiveJob).setJob(MAFIA);
 					job = "마피아";
+					jobNum = MAFIA;
 				}
 				else if(random == 2) {
 					playerList.get(playerSelectForGiveJob).setJob(POLICE);
 					job = "경찰";
+					jobNum = POLICE;
 				}
 				else if(random == 3) {
 					playerList.get(playerSelectForGiveJob).setJob(MEDIC);
 					job = "의사";
+					jobNum = MEDIC;
 				}
 				else {
 					playerList.get(playerSelectForGiveJob).setJob(CIVIL);
 					job = "시민";
+					jobNum = CIVIL;
 				}
 				
 				PrintWriter printWriter = playerList.get(playerSelectForGiveJob).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println((Integer.toString(jobNum)));
 				printWriter.flush();
 				
 				printWriter.println("**********************************");
@@ -197,7 +208,7 @@ public class MafiaGameServer {
 		}
 		
 		try {
-			Thread.sleep(5 * 1000);
+			Thread.sleep(10 * 1000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -288,6 +299,17 @@ public class MafiaGameServer {
 				break;
 			}
 			
+			for(int i=0; i<playerList.size(); i++) {
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println("투표 결과 \"" + playerList.get(highestUser).getUserNickName() + "\" 님이 처형되었습니다.");
+				printWriter.flush();
+				
+				printWriter.println("\"" + playerList.get(highestUser).getUserNickName() + "\" 님은 " + deadPlayerJobStr + "(이)였습니다.");
+				printWriter.flush();
+			}
+			
 			if(aliveMafia == 0) {		// 마피아가 모두 처형당하면 게임 종료.
 				for(int i=0; i<playerList.size(); i++) {
 					PrintWriter printWriter = playerList.get(i).getPrintWriter();
@@ -313,12 +335,6 @@ public class MafiaGameServer {
 					PrintWriter printWriter = playerList.get(i).getPrintWriter();
 					printWriter.flush();
 					
-					printWriter.println("투표 결과 \"" + playerList.get(highestUser).getUserNickName() + "\" 님이 처형되었습니다.");
-					printWriter.flush();
-					
-					printWriter.println("\"" + playerList.get(highestUser).getUserNickName() + "\" 님은 " + deadPlayerJobStr + "(이)였습니다.");
-					printWriter.flush();
-					
 					if(i == highestUser) {
 						printWriter.println(YOU_ARE_DEAD);
 						printWriter.flush();
@@ -338,18 +354,49 @@ public class MafiaGameServer {
 			
 			printWriter.println("Day " + dayCount + ". 밤이 되었습니다.");
 			printWriter.flush();
-			
-			if(aliveMafia > 1) {
-				printWriter.println("지금부터 " + DISCUSS_TIME_MAFIA + "초 동안 마피아들이 살해할 대상에 대한 토론을 진행합니다.");
-				printWriter.flush();
-			}
 		}
 		
 		if(aliveMafia > 1) {		// 마피아가 2명 이상이면 회의시간 20초 부여. 미만인 경우 바로 살해대상 수신.
-			try {
+			for(int i=0; i<playerList.size(); i++) {
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println("지금부터 " + DISCUSS_TIME_MAFIA + "초 동안 마피아들이 살해할 대상에 대한 토론을 진행합니다.");
+				printWriter.flush();
+				
+				if(playerList.get(i).getJob() == MAFIA && playerList.get(i).getIsAlive() == true) {
+					printWriter.println(MAFIA_DISCUSS_ON);
+					printWriter.flush();
+				}
+				
+				playerList.get(i).setNightTime(true);
+			}
+
+			try {	// 마피아 회의 20초 대기.
 				Thread.sleep(20 * 1000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
+			}
+			
+			for (int i = 0; i < playerList.size(); i++) {
+				playerList.get(i).setNightTime(false);
+
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+
+				printWriter.println(MAFIA_DISCUSS_OFF);
+				printWriter.flush();
+			}
+		} else {
+			for(int i=0; i<playerList.size(); i++) {
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println("남은 마피아는 1명이므로 마피아 회의는 생략됩니다.");
+				printWriter.flush();
+				
+				printWriter.println(NO_MAFIA_DISCUSS);
+				printWriter.flush();
 			}
 		}
 		///////////////////////////////////////////////////////////////
@@ -359,6 +406,12 @@ public class MafiaGameServer {
 		
 		
 		///////////////////////////////////////////////////////////////
+		
+		try {
+			Thread.sleep(1000000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public static void lobbyEnter(PrintWriter printWriter) {
