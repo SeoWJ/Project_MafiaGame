@@ -55,7 +55,8 @@ public class Player extends Thread {
 				else {
 					try {
 						String line = bufferedReader.readLine();
-						System.out.println("Debug : execute at nighttime");
+						if(line.equals(""))
+							continue;
 						if(job == MafiaGameServer.MAFIA) {
 							for (int i = 0; i < MafiaGameServer.getPlayerList().size(); i++) {
 								if (MafiaGameServer.getPlayerList().get(i).getJob() == MafiaGameServer.MAFIA) {

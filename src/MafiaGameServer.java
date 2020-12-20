@@ -31,6 +31,7 @@ public class MafiaGameServer {
 	public static final String MAFIA_DISCUSS_ON = "*SYSTEM*.Mafia_Discuss_On";
 	public static final String MAFIA_DISCUSS_OFF = "*SYSTEM*.Mafia_Discuss_Off";
 	public static final String GAME_END = "*SYSTEM*.Game_End";
+	public static final String CLEAR_SCREEN = "*SYSTEM*.Clear_Screen";
 	
 	public static final int SERVER_PORT = 8080;
 	
@@ -176,36 +177,6 @@ public class MafiaGameServer {
 				giveJob[random] = true;
 			}
 		}
-		///////////////////////////////////////////////////////////////
-		
-		/////////////// Phase 1. Daytime ///////////////////////////////////
-		dayCount++;
-		
-		for(int i=0; i<playerList.size(); i++) {
-			PrintWriter printWriter = playerList.get(i).getPrintWriter();
-			printWriter.flush();
-			
-			printWriter.println("Day " + dayCount + ". 낮이 되었습니다.");
-			printWriter.flush();
-			
-			printWriter.println("지금부터 " + DISCUSS_TIME + " 초 동안 자유롭게 토론하실 수 있습니다.");
-			printWriter.flush();
-		}
-		
-		try {
-			//Thread.sleep(DISCUSS_TIME * 1000);
-			Thread.sleep(10000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		
-		for(int i=0; i<playerList.size(); i++) {			// 플레이어 채팅 종료
-			PrintWriter printWriter = playerList.get(i).getPrintWriter();
-			printWriter.flush();
-			
-			printWriter.println(CHATTING_END);
-			printWriter.flush();
-		}
 		
 		try {
 			Thread.sleep(10 * 1000);
@@ -214,203 +185,479 @@ public class MafiaGameServer {
 		}
 		///////////////////////////////////////////////////////////////
 		
-		////////////// Phase 2. Vote For Execution  ////////////////////////////
-		int[] voteResult = new int[MAX_PLAYER];
-		Arrays.fill(ballotBox, null);
-		Arrays.fill(voteResult, 0);
-		
-		for(int i=0; i<playerList.size(); i++) {
-			PrintWriter printWriter = playerList.get(i).getPrintWriter();
-			printWriter.flush();
-			
-			printWriter.println("투표를 개시하겠습니다.");
-			printWriter.flush();
-			
-			printWriter.println("투표는 20초간 진행됩니다.");
-			printWriter.flush();
-			
-			printWriter.println("처형하고자 하는 대상의 닉네임을 적어 주십시오");
-			printWriter.flush();
-		}
-		
-		try {
-			Thread.sleep(20 * 1000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		
-		int highestResult = 0;
-		int highestUser = -1;
-		for(int i=0; i<ballotBox.length; i++) {		// 개표
-			if(!playerList.get(i).getIsAlive())			// 죽은 플레이어의 표는 스킵.
-				continue;
-			else {
-				for(int j=0; j<playerList.size(); j++) {
-					if(ballotBox[i].equals(playerList.get(j).getUserNickName())) {
-						voteResult[j]++;
-						highestUser = highestResult > voteResult[j] ? highestUser : j;
-						highestResult = highestResult > voteResult[j] ? highestResult : voteResult[j];
-						break;
-					}
-				}
-			}
-		}
-		
-		boolean voteFailed = false;
-		for(int i=0; i<MAX_PLAYER; i++) {
-			if(voteResult[i] == highestResult && i != highestUser) {
-				voteFailed = true;
-			}
-		}
-		
-		if(voteFailed) {
-			for(int i=0; i<playerList.size(); i++) {
+		while (true) {
+			/////////////// Phase 1. Daytime ///////////////////////////////////
+			dayCount++;
+
+			for (int i = 0; i < playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
 				
-				printWriter.println("투표 결과 동점으로 아무도 처형되지 않았습니다.");
+				printWriter.println(CLEAR_SCREEN);
 				printWriter.flush();
-			}
-		}
-		else {
-			playerList.get(highestUser).setIsAlive(false);
-			
-			int deadPlayerJob = playerList.get(highestUser).getJob();
-			String deadPlayerJobStr = null;
-			
-			switch(deadPlayerJob) {
-			case MAFIA :
-				aliveMafia--;
-				deadPlayerJobStr = "마피아";
-				break;
-			case CIVIL :
-				aliveCivil--;
-				deadPlayerJobStr = "시민";
-				break;
-			case POLICE :
-				aliveCivil--;
-				alivePolice--;
-				deadPlayerJobStr = "경찰";
-				break;
-			case MEDIC :
-				aliveCivil--;
-				aliveMedic--;
-				deadPlayerJobStr = "의사";
-				break;
-			}
-			
-			for(int i=0; i<playerList.size(); i++) {
-				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+
+				printWriter.println("Day " + dayCount + ". 낮이 되었습니다.");
 				printWriter.flush();
-				
-				printWriter.println("투표 결과 \"" + playerList.get(highestUser).getUserNickName() + "\" 님이 처형되었습니다.");
+
+				printWriter.println("지금부터 " + DISCUSS_TIME + " 초 동안 자유롭게 토론하실 수 있습니다.");
 				printWriter.flush();
-				
-				printWriter.println("\"" + playerList.get(highestUser).getUserNickName() + "\" 님은 " + deadPlayerJobStr + "(이)였습니다.");
-				printWriter.flush();
-			}
-			
-			if(aliveMafia == 0) {		// 마피아가 모두 처형당하면 게임 종료.
-				for(int i=0; i<playerList.size(); i++) {
-					PrintWriter printWriter = playerList.get(i).getPrintWriter();
-					printWriter.flush();
-					
-					printWriter.println("마피아가 모두 처형되었습니다.");
-					printWriter.flush();
-					
-					printWriter.println("시민의 승리로 게임이 종료되었습니다.");
-					printWriter.flush();
-					
-					printWriter.println(GAME_END);
-					printWriter.flush();
-				}
-				try {
-					Thread.sleep(10 * 1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				System.exit(0);
-			} else {
-				for(int i=0; i<playerList.size(); i++) {
-					PrintWriter printWriter = playerList.get(i).getPrintWriter();
-					printWriter.flush();
-					
-					if(i == highestUser) {
-						printWriter.println(YOU_ARE_DEAD);
-						printWriter.flush();
-					}
-					
-					printWriter.println(VOTE_END);
-					printWriter.flush();
-				}
-			}
-		}
-		///////////////////////////////////////////////////////////////
-		
-		/////////////// Phase 3. Nighttime ///////////////////////////////////
-		for(int i=0; i<playerList.size(); i++) {
-			PrintWriter printWriter = playerList.get(i).getPrintWriter();
-			printWriter.flush();
-			
-			printWriter.println("Day " + dayCount + ". 밤이 되었습니다.");
-			printWriter.flush();
-		}
-		
-		if(aliveMafia > 1) {		// 마피아가 2명 이상이면 회의시간 20초 부여. 미만인 경우 바로 살해대상 수신.
-			for(int i=0; i<playerList.size(); i++) {
-				PrintWriter printWriter = playerList.get(i).getPrintWriter();
-				printWriter.flush();
-				
-				printWriter.println("지금부터 " + DISCUSS_TIME_MAFIA + "초 동안 마피아들이 살해할 대상에 대한 토론을 진행합니다.");
-				printWriter.flush();
-				
-				if(playerList.get(i).getJob() == MAFIA && playerList.get(i).getIsAlive() == true) {
-					printWriter.println(MAFIA_DISCUSS_ON);
-					printWriter.flush();
-				}
-				
-				playerList.get(i).setNightTime(true);
 			}
 
-			try {	// 마피아 회의 20초 대기.
+			try {
+				// Thread.sleep(DISCUSS_TIME * 1000);
+				Thread.sleep(10000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			for (int i = 0; i < playerList.size(); i++) { // 플레이어 채팅 종료
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+
+				printWriter.println(CHATTING_END);
+				printWriter.flush();
+			}
+
+			try {
+				Thread.sleep(10 * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			///////////////////////////////////////////////////////////////
+
+			////////////// Phase 2. Vote For Execution ////////////////////////////
+			int[] voteResult = new int[MAX_PLAYER];
+			Arrays.fill(ballotBox, null);
+			Arrays.fill(voteResult, 0);
+
+			for (int i = 0; i < playerList.size(); i++) {
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println(CLEAR_SCREEN);
+				printWriter.flush();
+
+				printWriter.println("투표를 개시하겠습니다.");
+				printWriter.flush();
+
+				printWriter.println("투표는 20초간 진행됩니다.");
+				printWriter.flush();
+
+				printWriter.println("처형하고자 하는 대상의 닉네임을 적어 주십시오");
+				printWriter.flush();
+			}
+
+			try {
 				Thread.sleep(20 * 1000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+
+			int highestResult = 0;
+			int highestUser = -1;
+			for (int i = 0; i < ballotBox.length; i++) { // 개표
+				if (!playerList.get(i).getIsAlive()) // 죽은 플레이어의 표는 스킵.
+					continue;
+				else {
+					for (int j = 0; j < playerList.size(); j++) {
+						if (ballotBox[i] == null)
+							continue;
+						if (ballotBox[i].equals(playerList.get(j).getUserNickName())) {
+							voteResult[j]++;
+							highestUser = highestResult > voteResult[j] ? highestUser : j;
+							highestResult = highestResult > voteResult[j] ? highestResult : voteResult[j];
+							break;
+						}
+					}
+				}
+			}
+
+			boolean voteFailed = false;
+			for (int i = 0; i < MAX_PLAYER; i++) {
+				if (voteResult[i] == highestResult && i != highestUser) {
+					voteFailed = true;
+				}
+			}
+
+			if (voteFailed) {
+				for (int i = 0; i < playerList.size(); i++) {
+					PrintWriter printWriter = playerList.get(i).getPrintWriter();
+					printWriter.flush();
+
+					printWriter.println("투표 결과 동점으로 아무도 처형되지 않았습니다.");
+					printWriter.flush();
+					
+					printWriter.println(VOTE_END);
+					printWriter.flush();
+				}
+			} else {
+				playerList.get(highestUser).setIsAlive(false);
+
+				int deadPlayerJob = playerList.get(highestUser).getJob();
+				String deadPlayerJobStr = null;
+
+				switch (deadPlayerJob) {
+				case MAFIA:
+					aliveMafia--;
+					deadPlayerJobStr = "마피아";
+					break;
+				case CIVIL:
+					aliveCivil--;
+					deadPlayerJobStr = "시민";
+					break;
+				case POLICE:
+					aliveCivil--;
+					alivePolice--;
+					deadPlayerJobStr = "경찰";
+					break;
+				case MEDIC:
+					aliveCivil--;
+					aliveMedic--;
+					deadPlayerJobStr = "의사";
+					break;
+				}
+
+				for (int i = 0; i < playerList.size(); i++) {
+					PrintWriter printWriter = playerList.get(i).getPrintWriter();
+					printWriter.flush();
+
+					printWriter.println("투표 결과 \"" + playerList.get(highestUser).getUserNickName() + "\" 님이 처형되었습니다.");
+					printWriter.flush();
+
+					printWriter.println("\"" + playerList.get(highestUser).getUserNickName() + "\" 님은 "
+							+ deadPlayerJobStr + "(이)였습니다.");
+					printWriter.flush();
+				}
+				if(aliveMafia >= aliveCivil) {	// 시민과 마피아의 수가 같아지면 게임 종료.
+					for (int i = 0; i < playerList.size(); i++) {
+						PrintWriter printWriter = playerList.get(i).getPrintWriter();
+						printWriter.flush();
+
+						printWriter.println("남은 시민과 마피아의 수가 같습니다.");
+						printWriter.flush();
+
+						printWriter.println("마피아의 승리로 게임이 종료되었습니다.");
+						printWriter.flush();
+
+						printWriter.println(GAME_END);
+						printWriter.flush();
+					}
+					try {
+						serverSocket.close();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					System.exit(0);
+				}
+				else if (aliveMafia == 0) { // 마피아가 모두 처형당하면 게임 종료.
+					for (int i = 0; i < playerList.size(); i++) {
+						PrintWriter printWriter = playerList.get(i).getPrintWriter();
+						printWriter.flush();
+
+						printWriter.println("마피아가 모두 처형되었습니다.");
+						printWriter.flush();
+
+						printWriter.println("시민의 승리로 게임이 종료되었습니다.");
+						printWriter.flush();
+
+						printWriter.println(GAME_END);
+						printWriter.flush();
+					}
+					try {
+						serverSocket.close();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					System.exit(0);
+				} else {
+					for (int i = 0; i < playerList.size(); i++) {
+						PrintWriter printWriter = playerList.get(i).getPrintWriter();
+						printWriter.flush();
+
+						if (i == highestUser) {
+							printWriter.println(YOU_ARE_DEAD);
+							printWriter.flush();
+						}
+
+						printWriter.println(VOTE_END);
+						printWriter.flush();
+					}
+				}
+			}
 			
+			try {
+				Thread.sleep(10 * 1000);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+			///////////////////////////////////////////////////////////////
+
+			/////////////// Phase 3. Nighttime ///////////////////////////////////
 			for (int i = 0; i < playerList.size(); i++) {
-				playerList.get(i).setNightTime(false);
-
-				PrintWriter printWriter = playerList.get(i).getPrintWriter();
-				printWriter.flush();
-
-				printWriter.println(MAFIA_DISCUSS_OFF);
-				printWriter.flush();
-			}
-		} else {
-			for(int i=0; i<playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
 				printWriter.flush();
 				
-				printWriter.println("남은 마피아는 1명이므로 마피아 회의는 생략됩니다.");
+				printWriter.println(CLEAR_SCREEN);
 				printWriter.flush();
-				
-				printWriter.println(NO_MAFIA_DISCUSS);
+
+				printWriter.println("Day " + dayCount + ". 밤이 되었습니다.");
 				printWriter.flush();
 			}
-		}
-		///////////////////////////////////////////////////////////////
-		
-		/////////////// Phase 4. Mafia kills civil ////////////////////////////////
-		
-		
-		
-		///////////////////////////////////////////////////////////////
-		
-		try {
-			Thread.sleep(1000000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+
+			if (aliveMafia > 1) { // 마피아가 2명 이상이면 회의시간 20초 부여. 미만인 경우 바로 살해대상 수신.
+				for (int i = 0; i < playerList.size(); i++) {
+					PrintWriter printWriter = playerList.get(i).getPrintWriter();
+					printWriter.flush();
+
+					printWriter.println("지금부터 " + DISCUSS_TIME_MAFIA + "초 동안 마피아들이 살해할 대상에 대한 토론을 진행합니다.");
+					printWriter.flush();
+
+					if (playerList.get(i).getJob() == MAFIA && playerList.get(i).getIsAlive() == true) {
+						printWriter.println(MAFIA_DISCUSS_ON);
+						printWriter.flush();
+					}
+
+					playerList.get(i).setNightTime(true);
+				}
+
+				try { // 마피아 회의 20초 대기.
+					Thread.sleep(20 * 1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+				for (int i = 0; i < playerList.size(); i++) {
+					playerList.get(i).setNightTime(false);
+
+					PrintWriter printWriter = playerList.get(i).getPrintWriter();
+					printWriter.flush();
+
+					printWriter.println(MAFIA_DISCUSS_OFF);
+					printWriter.flush();
+				}
+			} else {
+				for (int i = 0; i < playerList.size(); i++) {
+					PrintWriter printWriter = playerList.get(i).getPrintWriter();
+					printWriter.flush();
+
+					printWriter.println("남은 마피아는 1명이므로 마피아 회의는 생략됩니다.");
+					printWriter.flush();
+
+					printWriter.println(NO_MAFIA_DISCUSS);
+					printWriter.flush();
+				}
+			}
+
+			try {
+				Thread.sleep(10 * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			///////////////////////////////////////////////////////////////
+
+			/////////////// Phase 4. Mafia kills civil ////////////////////////////////
+			int[] mafiaKillingTarget = new int[2];
+			int mafiaCnt = 0;
+			int medicSavingTarget = -1;
+			int policeCheckingTarget = -1;
+			int mafiaKillingTargetFinal = -1;
+
+			Arrays.fill(ballotBox, null);
+			Arrays.fill(mafiaKillingTarget, -1);
+
+			for (int i = 0; i < playerList.size(); i++) {
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+				
+				printWriter.println(CLEAR_SCREEN);
+				printWriter.flush();
+
+				printWriter.println("투표가 시작되었습니다.");
+				printWriter.flush();
+
+				printWriter.println("투표는 20초간 진행됩니다.");
+				printWriter.flush();
+
+				if (playerList.get(i).getJob() == MAFIA && playerList.get(i).getIsAlive()) {
+					printWriter.println("살해하고자 하는 대상의 닉네임을 입력하여 주십시오.");
+					printWriter.flush();
+				} else if (playerList.get(i).getJob() == POLICE && playerList.get(i).getIsAlive() && alivePolice != 0) {
+					printWriter.println("확인하고자 하는 대상의 닉네임을 입력하여 주십시오.");
+					printWriter.flush();
+				} else if (playerList.get(i).getJob() == MEDIC && playerList.get(i).getIsAlive() && aliveMedic != 0) {
+					printWriter.println("살리고자 하는 대상의 닉네임을 입력하여 주십시오.");
+					printWriter.flush();
+				} else if (playerList.get(i).getJob() == CIVIL || !playerList.get(i).getIsAlive()) {
+					printWriter.println("투표가 진행되는 동안 잠시 대기해 주시기 바랍니다.");
+					printWriter.flush();
+				}
+			}
+
+			try {
+				Thread.sleep(20 * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			for (int i = 0; i < MAX_PLAYER; i++) { // 개표
+				if (playerList.get(i).getJob() == MAFIA && playerList.get(i).getIsAlive()) {
+					for (int j = 0; j < MAX_PLAYER; j++) {
+						if (ballotBox[i] == null)
+							continue;
+						if (ballotBox[i].equals(playerList.get(j).getUserNickName())) {
+							mafiaKillingTarget[mafiaCnt] = j;
+							mafiaCnt++;
+						}
+					}
+				}
+				if (playerList.get(i).getJob() == POLICE && playerList.get(i).getIsAlive()) {
+					for (int j = 0; j < MAX_PLAYER; j++) {
+						if (ballotBox[i] == null)
+							continue;
+						if (ballotBox[i].equals(playerList.get(j).getUserNickName())) {
+							policeCheckingTarget = j;
+						}
+					}
+				}
+				if (playerList.get(i).getJob() == MEDIC && playerList.get(i).getIsAlive()) {
+					for (int j = 0; j < MAX_PLAYER; j++) {
+						if (ballotBox[i] == null)
+							continue;
+						if (ballotBox[i].equals(playerList.get(j).getUserNickName())) {
+							medicSavingTarget = j;
+						}
+					}
+				}
+			}
+
+			if (mafiaKillingTarget[0] == -1) {
+				if (mafiaKillingTarget[1] == -1)
+					mafiaKillingTargetFinal = -1;
+				else
+					mafiaKillingTargetFinal = mafiaKillingTarget[1];
+			} else {
+				if (mafiaKillingTarget[1] != -1) {
+					if (mafiaKillingTarget[0] == mafiaKillingTarget[1])
+						mafiaKillingTargetFinal = mafiaKillingTarget[0];
+					else
+						mafiaKillingTargetFinal = -1;
+				} else
+					mafiaKillingTargetFinal = mafiaKillingTarget[0];
+			}
+
+			if (mafiaKillingTargetFinal != -1 && medicSavingTarget != -1
+					&& mafiaKillingTargetFinal == medicSavingTarget)
+				mafiaKillingTargetFinal = -2;
+
+			String deadPlayerJobStr = null;
+			if (mafiaKillingTargetFinal >= 0) {
+				int deadPlayerJob = playerList.get(mafiaKillingTargetFinal).getJob();
+
+				switch (deadPlayerJob) {
+				case MAFIA:
+					aliveMafia--;
+					deadPlayerJobStr = "마피아";
+					break;
+				case CIVIL:
+					aliveCivil--;
+					deadPlayerJobStr = "시민";
+					break;
+				case POLICE:
+					aliveCivil--;
+					alivePolice--;
+					deadPlayerJobStr = "경찰";
+					break;
+				case MEDIC:
+					aliveCivil--;
+					aliveMedic--;
+					deadPlayerJobStr = "의사";
+					break;
+				}
+			}
+			for (int i = 0; i < playerList.size(); i++) {
+				PrintWriter printWriter = playerList.get(i).getPrintWriter();
+				printWriter.flush();
+
+				if (aliveMafia >= aliveCivil) {
+					printWriter.println("남은 시민과 마피아의 수가 같습니다.");
+					printWriter.flush();
+
+					printWriter.println("마피아의 승리로 게임이 종료되었습니다.");
+					printWriter.flush();
+
+					printWriter.println(GAME_END);
+					printWriter.flush();
+
+					continue;
+				}
+
+				if (mafiaKillingTargetFinal == -2) {
+					printWriter.println("의사가 마피아에게 살해당한 인물을 살려내었습니다.");
+					printWriter.flush();
+
+					printWriter.println("아무도 죽지 않았습니다.");
+					printWriter.flush();
+
+					printWriter.println(VOTE_END);
+					printWriter.flush();
+				} else if (mafiaKillingTargetFinal == -1) {
+					printWriter.println("마피아들간 의견이 맞지않았습니다.");
+					printWriter.flush();
+
+					printWriter.println("아무도 죽지 않았습니다.");
+					printWriter.flush();
+
+					printWriter.println(VOTE_END);
+					printWriter.flush();
+				} else {
+					printWriter.println(
+							"\"" + playerList.get(mafiaKillingTargetFinal).getUserNickName() + "\" 님이 마피아에게 살해당했습니다.");
+					printWriter.flush();
+
+					printWriter.println("\"" + playerList.get(mafiaKillingTargetFinal).getUserNickName() + "\" 님은 "
+							+ deadPlayerJobStr + "(이)였습니다.");
+
+					if (i == mafiaKillingTargetFinal) {
+						printWriter.println(YOU_ARE_DEAD);
+						printWriter.flush();
+
+						playerList.get(i).setIsAlive(false);
+					}
+					if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
+						String policeTargetJob = null;
+						if (playerList.get(policeCheckingTarget).getJob() == MAFIA)
+							policeTargetJob = "마피아";
+						else if (playerList.get(policeCheckingTarget).getJob() == MEDIC)
+							policeTargetJob = "의사";
+						else if (playerList.get(policeCheckingTarget).getJob() == POLICE)
+							policeTargetJob = "경찰";
+						else if (playerList.get(policeCheckingTarget).getJob() == CIVIL)
+							policeTargetJob = "시민";
+
+						printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName()
+								+ "\" 님은 " + policeTargetJob + "입니다.");
+						printWriter.flush();
+					}
+
+					printWriter.println(VOTE_END);
+					printWriter.flush();
+				}
+			}
+			if (aliveMafia >= aliveCivil) {
+				try {
+					serverSocket.close();
+					System.exit(0);
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+			try {
+				Thread.sleep(10 * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			///////////////////////////////////////////////////////////////
 		}
 	}
 	

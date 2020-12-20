@@ -44,8 +44,6 @@ public class ClientSendThread extends Thread {
 				printWriter.println(input);
 				printWriter.flush();
 			}
-			clearScreen();
-			System.out.println("debug : Chatting OFF");
 		}		
 	}
 	

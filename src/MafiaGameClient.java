@@ -99,134 +99,189 @@ public class MafiaGameClient {
 			jobRecvNoticeCnt++;
 		}
 		//////////////////////////////////////////////////////
-		
-		/////////////// Phase 1. Daytime ///////////////////////////////////
-		ClientSendThread dayTimeDiscussSend = new ClientSendThread(printWriter, scanner);
-		
-		if(!dead) {			
-			dayTimeDiscussSend.start();
-		}
-		
-		while(true) {
-			if (bufferedReader != null) {
-				try {
-					String line = bufferedReader.readLine();
-					if(line.contains(MafiaGameServer.CHATTING_END)) {
-						System.out.println("토론이 종료되었습니다.\n");
-						System.out.println("10초 후 투표가 진행됩니다.\n");
-						System.out.println("Enter를 눌러주세요.\n");
-						dayTimeDiscussSend.setChattingStatus(CHATTING_OFF);
-						break;
+		while (true) {
+			/////////////// Phase 1. Daytime ///////////////////////////////////
+			ClientSendThread dayTimeDiscussSend = new ClientSendThread(printWriter, scanner);
+
+			if (!dead) {
+				dayTimeDiscussSend.start();
+			}
+
+			while (true) {
+				if (bufferedReader != null) {
+					try {
+						String line = bufferedReader.readLine();
+						if(line.contains(MafiaGameServer.CLEAR_SCREEN)) {
+							clearScreen();
+							continue;
+						}
+						else if (line.contains(MafiaGameServer.CHATTING_END)) {
+							System.out.println("토론이 종료되었습니다.\n");
+							System.out.println("10초 후 투표가 진행됩니다.\n");
+							if(!dead)
+								System.out.println("Enter를 눌러주세요.\n");
+							dayTimeDiscussSend.setChattingStatus(CHATTING_OFF);
+							break;
+						}
+						System.out.println(line);
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
-					System.out.println(line);
+				}
+			}
+
+			try {
+				Thread.sleep(5 * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			////////////////////////////////////////////////////////////////
+
+			////////////// Phase 2. Vote For Execution ////////////////////////////
+			int voteRecvNoticeCnt = 0;
+			while (voteRecvNoticeCnt < 4) {
+				String line = null;
+				try {
+					line = bufferedReader.readLine();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+				if(dead && voteRecvNoticeCnt == 3)
+					break;
+				if(line.contains(MafiaGameServer.CLEAR_SCREEN))
+					clearScreen();		
+				else
+					System.out.println(line);
+				voteRecvNoticeCnt++;
 			}
-		}
-		
-		try {
-			Thread.sleep(5 * 1000);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		////////////////////////////////////////////////////////////////
-		
-		////////////// Phase 2. Vote For Execution  ////////////////////////////
-		int voteRecvNoticeCnt = 0;
-		while (voteRecvNoticeCnt < 3) {
-			String line = null;
-			try {
-				line = bufferedReader.readLine();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			if(!dead) System.out.print(">> ");
+
+			ClientSendThread voteForExecution = new ClientSendThread(printWriter, scanner);
+			if (!dead) {
+				voteForExecution.setVote(true);
+				voteForExecution.start();
 			}
-			System.out.println(line);
-			voteRecvNoticeCnt++;
-		}
-		System.out.print(">> ");
-		
-		ClientSendThread voteForExecution = new ClientSendThread(printWriter, scanner);
-		if(!dead) {
-			voteForExecution.setVote(true);
-			voteForExecution.start();
-		}
-		
-		while (true) {
-			String getVoteResult = null;
-			try {
-				getVoteResult = bufferedReader.readLine();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			
-			if(getVoteResult.equals(MafiaGameServer.YOU_ARE_DEAD)) {
-				dead = true;
-				System.out.println("당신은 사망하였습니다.");
-				System.out.println("지금부터 대화에 참여하실 수 없으며, 관전만 가능합니다.");
-			}
-			else if(getVoteResult.equals(MafiaGameServer.VOTE_END))
-				break;
-			else if(getVoteResult.equals(MafiaGameServer.GAME_END)) {
+
+			while (true) {
+				String getVoteResult = null;
 				try {
-					Thread.sleep(5 * 1000);
-				} catch (InterruptedException e) {
+					getVoteResult = bufferedReader.readLine();
+				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				System.exit(0);
+
+				if (getVoteResult.equals(MafiaGameServer.YOU_ARE_DEAD)) {
+					dead = true;
+					System.out.println("당신은 사망하였습니다.");
+					System.out.println("지금부터 대화에 참여하실 수 없으며, 관전만 가능합니다.");
+				} else if (getVoteResult.equals(MafiaGameServer.VOTE_END))
+					break;
+				else if (getVoteResult.equals(MafiaGameServer.GAME_END)) {
+					try {
+						Thread.sleep(5 * 1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					System.exit(0);
+				} else
+					System.out.println(getVoteResult);
 			}
-			else
-				System.out.println(getVoteResult);
-		}
-		
-		try {
-			Thread.sleep(1 * 1000);
-		} catch (InterruptedException e1) {
-			e1.printStackTrace();
-		}
-		////////////////////////////////////////////////////////////////
-		
-		/////////////// Phase 3. Nighttime ///////////////////////////////////
-		ClientSendThread nightTime = null;
-		
-		while (true) {
-			String nightTimeNotice = null;
+
 			try {
-				nightTimeNotice = bufferedReader.readLine();
-			} catch (IOException e) {
-				e.printStackTrace();
+				Thread.sleep(1 * 1000);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
 			}
-			
-			if(nightTimeNotice.equals(MafiaGameServer.NO_MAFIA_DISCUSS)) {
-				break;
+			////////////////////////////////////////////////////////////////
+
+			/////////////// Phase 3. Nighttime ///////////////////////////////////
+			ClientSendThread nightTime = null;
+
+			while (true) {
+				String nightTimeNotice = null;
+				try {
+					nightTimeNotice = bufferedReader.readLine();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				
+				if(nightTimeNotice.contains(MafiaGameServer.CLEAR_SCREEN)) {
+					clearScreen();
+					continue;
+				}
+				if (nightTimeNotice.equals(MafiaGameServer.NO_MAFIA_DISCUSS)) {
+					break;
+				}
+
+				if (job == MafiaGameServer.MAFIA && nightTimeNotice.equals(MafiaGameServer.MAFIA_DISCUSS_ON)) {
+					nightTime = new ClientSendThread(printWriter, scanner);
+					nightTime.start();
+					continue;
+				} else if (job == MafiaGameServer.MAFIA && nightTimeNotice.equals(MafiaGameServer.MAFIA_DISCUSS_OFF)) {
+					System.out.println("마피아 회의가 종료되었습니다.\n");
+					System.out.println("10초 후 마피아 / 의사 / 경찰의 투표가 진행됩니다.\n");
+					if(!dead) System.out.println("Enter를 눌러주세요.\n");
+					nightTime.setChattingStatus(CHATTING_OFF);
+					break;
+				} else if (job != MafiaGameServer.MAFIA && nightTimeNotice.equals(MafiaGameServer.MAFIA_DISCUSS_OFF)) {
+					System.out.println("마피아 회의가 종료되었습니다.\n");
+					System.out.println("10초 후 마피아 / 의사 / 경찰의 투표가 진행됩니다.\n");
+					break;
+				}
+				System.out.println(nightTimeNotice);
 			}
-			
-			if(job == MafiaGameServer.MAFIA && nightTimeNotice.equals(MafiaGameServer.MAFIA_DISCUSS_ON)) {
-				nightTime = new ClientSendThread(printWriter, scanner);
-				nightTime.start();
-				continue;
+			////////////////////////////////////////////////////////////////
+
+			/////////////// Phase 4. Mafia kills civil ////////////////////////////////
+			int nightTimeVoteRecvNoticeCnt = 0;
+			ClientSendThread nightTimeVote = null;
+
+			while (nightTimeVoteRecvNoticeCnt < 4) {
+				String nightTimeVoteNotice = null;
+				try {
+					nightTimeVoteNotice = bufferedReader.readLine();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				if(nightTimeVoteNotice.contains(MafiaGameServer.CLEAR_SCREEN))
+					clearScreen();
+				else
+					System.out.println(nightTimeVoteNotice);
+				nightTimeVoteRecvNoticeCnt++;
 			}
-			else if(job == MafiaGameServer.MAFIA && nightTimeNotice.equals(MafiaGameServer.MAFIA_DISCUSS_OFF)) {
-				System.out.println("마피아 회의가 종료되었습니다.\n");
-				System.out.println("10초 후 투표가 진행됩니다.\n");
-				System.out.println("Enter를 눌러주세요.\n");
-				nightTime.setChattingStatus(CHATTING_OFF);
-				break;
+
+			if (!dead && (job == MafiaGameServer.MAFIA || job == MafiaGameServer.MEDIC || job == MafiaGameServer.POLICE)) {
+				System.out.print(">> ");
+				nightTimeVote = new ClientSendThread(printWriter, scanner);
+				nightTimeVote.setVote(true);
+				nightTimeVote.start();
 			}
-			else if(job != MafiaGameServer.MAFIA && nightTimeNotice.equals(MafiaGameServer.MAFIA_DISCUSS_OFF)) {
-				System.out.println("마피아 회의가 종료되었습니다.\n");
-				System.out.println("10초 후 투표가 진행됩니다.\n");
-				break;
+
+			while (true) {
+				String getVoteResult = null;
+				try {
+					getVoteResult = bufferedReader.readLine();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+
+				if (getVoteResult.equals(MafiaGameServer.YOU_ARE_DEAD)) {
+					dead = true;
+					System.out.println("당신은 사망하였습니다.");
+					System.out.println("지금부터 대화에 참여하실 수 없으며, 관전만 가능합니다.");
+				} else if (getVoteResult.equals(MafiaGameServer.VOTE_END))
+					break;
+				else if (getVoteResult.equals(MafiaGameServer.GAME_END)) {
+					try {
+						Thread.sleep(5 * 1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					System.exit(0);
+				} else
+					System.out.println(getVoteResult);
 			}
-			System.out.println(nightTimeNotice);
-		}
-		////////////////////////////////////////////////////////////////
-		
-		try {
-			Thread.sleep(100 * 1000);
-		} catch(Exception e) {
-			e.printStackTrace();
+			///////////////////////////////////////////////////////////////
 		}
 	}
 	
