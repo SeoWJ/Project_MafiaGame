@@ -204,8 +204,7 @@ public class MafiaGameServer {
 			}
 
 			try {
-				// Thread.sleep(DISCUSS_TIME * 1000);
-				Thread.sleep(10000);
+				Thread.sleep(DISCUSS_TIME * 1000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -578,8 +577,7 @@ public class MafiaGameServer {
 			}
 			
 			String policeTargetJob = null;
-			if(policeCheckingTarget == -1);
-			else {
+			if(policeCheckingTarget != -1) {
 				if (playerList.get(policeCheckingTarget).getJob() == MAFIA)
 					policeTargetJob = "마피아";
 				else if (playerList.get(policeCheckingTarget).getJob() == MEDIC)
@@ -631,8 +629,8 @@ public class MafiaGameServer {
 
 						playerList.get(i).setIsAlive(false);
 					}
-				}				
-				if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
+				}
+				if (playerList.get(i).getJob() == POLICE && playerList.get(i).getIsAlive() && policeCheckingTarget != -1) {
 					printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName() + "\" 님은 " + policeTargetJob + "입니다.");
 					printWriter.flush();
 				}

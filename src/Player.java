@@ -6,7 +6,6 @@ public class Player extends Thread {
 	private String userNickName;
 	private int job;			// Mafia, Civil, Police, Medic
 	private boolean isAlive;
-	private boolean vote;
 	private boolean nightTime;
 	
 	private Socket socket;
@@ -24,7 +23,6 @@ public class Player extends Thread {
 			e.printStackTrace();
 		}
 		this.setIsAlive(true);
-		this.setVote(false);
 		this.setNightTime(false);
 	}
 	
@@ -126,10 +124,6 @@ public class Player extends Thread {
 
 	public void setIsAlive(boolean isAlive) {
 		this.isAlive = isAlive;
-	}
-
-	public void setVote(boolean vote) {
-		this.vote = vote;
 	}
 
 	public void setNightTime(boolean nightTime) {
