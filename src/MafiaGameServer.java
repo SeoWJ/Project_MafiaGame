@@ -36,6 +36,7 @@ public class MafiaGameServer {
 
 	public static final int SERVER_PORT = 8080;
 
+	private static ExecutorService threadPool;
 	private static List<Player> playerList = new ArrayList<Player>();
 	private static String[] ballotBox = new String[MAX_PLAYER];
 	private static Semaphore semaphore = new Semaphore(1);
@@ -55,6 +56,7 @@ public class MafiaGameServer {
 
 
 		////////// 플레이어 참여 대기(7명) /////////////////////////////////
+		threadPool = Executors.newFixedThreadPool(7);
 		while(playerList.size() < MAX_PLAYER) {
 			Socket socket = null;
 
@@ -77,7 +79,8 @@ public class MafiaGameServer {
 
 			player.setUserNickName(userNickName);
 			playerList.add(player);
-			player.start();
+			//player.start();
+			threadPool.submit(player);
 
 			for(int i=0; i<playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
@@ -344,6 +347,7 @@ public class MafiaGameServer {
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
+					threadPool.shutdown();
 					System.exit(0);
 				}
 				else if (aliveMafia == 0) { // 마피아가 모두 처형당하면 게임 종료.
@@ -365,6 +369,7 @@ public class MafiaGameServer {
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
+					threadPool.shutdown();
 					System.exit(0);
 				} else {
 					for (int i = 0; i < playerList.size(); i++) {
@@ -551,36 +556,39 @@ public class MafiaGameServer {
 				int deadPlayerJob = playerList.get(mafiaKillingTargetFinal).getJob();
 
 				switch (deadPlayerJob) {
-					case MAFIA:
-						aliveMafia--;
-						deadPlayerJobStr = "마피아";
-						break;
-					case CIVIL:
-						aliveCivil--;
-						deadPlayerJobStr = "시민";
-						break;
-					case POLICE:
-						aliveCivil--;
-						alivePolice--;
-						deadPlayerJobStr = "경찰";
-						break;
-					case MEDIC:
-						aliveCivil--;
-						aliveMedic--;
-						deadPlayerJobStr = "의사";
-						break;
+				case MAFIA:
+					aliveMafia--;
+					deadPlayerJobStr = "마피아";
+					break;
+				case CIVIL:
+					aliveCivil--;
+					deadPlayerJobStr = "시민";
+					break;
+				case POLICE:
+					aliveCivil--;
+					alivePolice--;
+					deadPlayerJobStr = "경찰";
+					break;
+				case MEDIC:
+					aliveCivil--;
+					aliveMedic--;
+					deadPlayerJobStr = "의사";
+					break;
 				}
 			}
 			
 			String policeTargetJob = null;
-			if (playerList.get(policeCheckingTarget).getJob() == MAFIA)
-				policeTargetJob = "마피아";
-			else if (playerList.get(policeCheckingTarget).getJob() == MEDIC)
-				policeTargetJob = "의사";
-			else if (playerList.get(policeCheckingTarget).getJob() == POLICE)
-				policeTargetJob = "경찰";
-			else if (playerList.get(policeCheckingTarget).getJob() == CIVIL)
-				policeTargetJob = "시민";
+			if(policeCheckingTarget == -1);
+			else {
+				if (playerList.get(policeCheckingTarget).getJob() == MAFIA)
+					policeTargetJob = "마피아";
+				else if (playerList.get(policeCheckingTarget).getJob() == MEDIC)
+					policeTargetJob = "의사";
+				else if (playerList.get(policeCheckingTarget).getJob() == POLICE)
+					policeTargetJob = "경찰";
+				else if (playerList.get(policeCheckingTarget).getJob() == CIVIL)
+					policeTargetJob = "시민";
+			}
 			
 			for (int i = 0; i < playerList.size(); i++) {
 				PrintWriter printWriter = playerList.get(i).getPrintWriter();
@@ -605,35 +613,17 @@ public class MafiaGameServer {
 
 					printWriter.println("아무도 죽지 않았습니다.");
 					printWriter.flush();
-					
-					if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
-						printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName() + "\" 님은 " + policeTargetJob + "입니다.");
-						printWriter.flush();
-					}
-
-					printWriter.println(VOTE_END);
-					printWriter.flush();
 				} else if (mafiaKillingTargetFinal == -1) {
 					printWriter.println("마피아들간 의견이 맞지않았습니다.");
 					printWriter.flush();
 
 					printWriter.println("아무도 죽지 않았습니다.");
 					printWriter.flush();
-					
-					if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
-						printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName() + "\" 님은 " + policeTargetJob + "입니다.");
-						printWriter.flush();
-					}
-
-					printWriter.println(VOTE_END);
-					printWriter.flush();
 				} else {
-					printWriter.println(
-							"\"" + playerList.get(mafiaKillingTargetFinal).getUserNickName() + "\" 님이 마피아에게 살해당했습니다.");
+					printWriter.println("\"" + playerList.get(mafiaKillingTargetFinal).getUserNickName() + "\" 님이 마피아에게 살해당했습니다.");
 					printWriter.flush();
 
-					printWriter.println("\"" + playerList.get(mafiaKillingTargetFinal).getUserNickName() + "\" 님은 "
-							+ deadPlayerJobStr + "(이)였습니다.");
+					printWriter.println("\"" + playerList.get(mafiaKillingTargetFinal).getUserNickName() + "\" 님은 " + deadPlayerJobStr + "(이)였습니다.");
 
 					if (i == mafiaKillingTargetFinal) {
 						printWriter.println(YOU_ARE_DEAD);
@@ -641,18 +631,19 @@ public class MafiaGameServer {
 
 						playerList.get(i).setIsAlive(false);
 					}
-					if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
-						printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName() + "\" 님은 " + policeTargetJob + "입니다.");
-						printWriter.flush();
-					}
-
-					printWriter.println(VOTE_END);
+				}				
+				if (playerList.get(i).getJob() == POLICE && playerList.get(i).isAlive() && policeCheckingTarget != -1) {
+					printWriter.println("지목하신 \"" + playerList.get(policeCheckingTarget).getUserNickName() + "\" 님은 " + policeTargetJob + "입니다.");
 					printWriter.flush();
 				}
+
+				printWriter.println(VOTE_END);
+				printWriter.flush();
 			}
 			if (aliveMafia >= aliveCivil) {
 				try {
 					serverSocket.close();
+					threadPool.shutdown();
 					System.exit(0);
 				} catch(Exception e) {
 					e.printStackTrace();
@@ -738,5 +729,9 @@ public class MafiaGameServer {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}		
+	}
+
+	public static ExecutorService getThreadPool() {
+		return threadPool;
 	}
 }
